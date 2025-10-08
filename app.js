@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // APIキー保存
     let OPENAI_API_KEY = '';
     
+    // TTS関連変数
+    let isTTSEnabled = true; // デフォルトでTTS有効
+    let currentSpeechUtterance = null; // 現在再生中の音声
+    
     // DOM要素
     const startJapaneseBtn = document.getElementById('startJapaneseBtn');
     const startEnglishBtn = document.getElementById('startEnglishBtn');
@@ -25,6 +29,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const resetKeysBtn = document.getElementById('resetKeys');
     const listeningIndicator = document.getElementById('listeningIndicator');
     const translatingIndicator = document.getElementById('translatingIndicator');
+    const speakingIndicator = document.getElementById('speakingIndicator');
+    const ttsToggle = document.getElementById('ttsToggle');
     const fontSizeSmallBtn = document.getElementById('fontSizeSmall');
     const fontSizeMediumBtn = document.getElementById('fontSizeMedium');
     const fontSizeLargeBtn = document.getElementById('fontSizeLarge');
@@ -104,11 +110,87 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
+    // TTS機能: 翻訳結果を音声で読み上げ
+    function speakTranslation(text, language) {
+        // TTS無効の場合は何もしない
+        if (!isTTSEnabled || !text || !text.trim()) {
+            return;
+        }
+        
+        // Web Speech API対応確認
+        if (!('speechSynthesis' in window)) {
+            console.warn('このブラウザはWeb Speech API (TTS)に対応していません');
+            return;
+        }
+        
+        // 前の音声を停止
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+        }
+        
+        // 新しい音声合成オブジェクトを作成
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // 言語設定（日本語→英語翻訳なら英語で、英語→日本語翻訳なら日本語で読み上げ）
+        utterance.lang = language === 'ja' ? 'en-US' : 'ja-JP';
+        
+        // 音声設定
+        utterance.rate = 1.0;    // 通常速度
+        utterance.pitch = 1.0;   // 通常ピッチ
+        utterance.volume = 1.0;  // 最大音量
+        
+        // イベントハンドラ
+        utterance.onstart = function() {
+            console.log('TTS再生開始:', language === 'ja' ? '英語' : '日本語');
+            if (speakingIndicator) {
+                speakingIndicator.classList.add('visible');
+            }
+        };
+        
+        utterance.onend = function() {
+            console.log('TTS再生終了');
+            if (speakingIndicator) {
+                speakingIndicator.classList.remove('visible');
+            }
+            currentSpeechUtterance = null;
+        };
+        
+        utterance.onerror = function(event) {
+            console.error('TTS再生エラー:', event.error);
+            if (speakingIndicator) {
+                speakingIndicator.classList.remove('visible');
+            }
+            currentSpeechUtterance = null;
+        };
+        
+        // 音声を再生
+        currentSpeechUtterance = utterance;
+        window.speechSynthesis.speak(utterance);
+    }
+    
+    // TTS停止関数
+    function stopTTS() {
+        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            if (speakingIndicator) {
+                speakingIndicator.classList.remove('visible');
+            }
+            currentSpeechUtterance = null;
+            console.log('TTS停止');
+        }
+    }
+    
     // APIキー読み込み
     function loadApiKeys() {
         const storedOpenaiKey = localStorage.getItem('translatorOpenaiKey');
         
         OPENAI_API_KEY = storedOpenaiKey ? storedOpenaiKey.trim() : '';
+        
+        // TTS設定を読み込み
+        const storedTTSEnabled = localStorage.getItem('translatorTTSEnabled');
+        if (storedTTSEnabled !== null) {
+            isTTSEnabled = storedTTSEnabled === 'true';
+        }
         
         if (!OPENAI_API_KEY) {
             openaiKeyInput.value = DEFAULT_OPENAI_API_KEY;
@@ -132,6 +214,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         OPENAI_API_KEY = openaiKey.trim();
         
+        // TTS設定も保存
+        if (ttsToggle) {
+            isTTSEnabled = ttsToggle.checked;
+            localStorage.setItem('translatorTTSEnabled', isTTSEnabled.toString());
+        }
+        
         apiModal.style.display = 'none';
         initializeApp();
     });
@@ -139,6 +227,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 設定モーダルを開く
     settingsButton.addEventListener('click', () => {
         openaiKeyInput.value = OPENAI_API_KEY;
+        if (ttsToggle) {
+            ttsToggle.checked = isTTSEnabled;
+        }
         apiModal.style.display = 'flex';
     });
     
@@ -146,6 +237,7 @@ document.addEventListener('DOMContentLoaded', function() {
     resetKeysBtn.addEventListener('click', () => {
         if (confirm('APIキーをリセットしますか？')) {
             localStorage.removeItem('translatorOpenaiKey');
+            localStorage.removeItem('translatorTTSEnabled');
             location.reload();
         }
     });
@@ -156,6 +248,15 @@ document.addEventListener('DOMContentLoaded', function() {
             apiModal.style.display = 'none';
         }
     });
+    
+    // TTS設定の変更を監視
+    if (ttsToggle) {
+        ttsToggle.addEventListener('change', () => {
+            isTTSEnabled = ttsToggle.checked;
+            localStorage.setItem('translatorTTSEnabled', isTTSEnabled.toString());
+            console.log('TTS設定変更:', isTTSEnabled ? '有効' : '無効');
+        });
+    }
     
     // フォントサイズ変更関数
     function changeFontSize(size) {
@@ -185,6 +286,16 @@ document.addEventListener('DOMContentLoaded', function() {
             status.classList.add('error');
             errorMessage.textContent = 'ブラウザが音声認識に対応していません。Chrome、Safari、またはEdgeをお使いください。';
             return;
+        }
+        
+        // TTS対応確認
+        if (!('speechSynthesis' in window)) {
+            console.warn('このブラウザはTTSに対応していません');
+        }
+        
+        // TTS設定の初期化
+        if (ttsToggle) {
+            ttsToggle.checked = isTTSEnabled;
         }
         
         // 言語ボタンを有効化
@@ -218,6 +329,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // コンテンツリセット機能
     function resetContent() {
+        // TTS停止
+        stopTTS();
+        
         // リセット処理
         processedResultIds.clear();
         lastTranslatedText = '';
@@ -394,6 +508,9 @@ document.addEventListener('DOMContentLoaded', function() {
         originalText.textContent = '';
         translatedText.textContent = '';
         
+        // TTS停止
+        stopTTS();
+        
         // 言語インジケータを更新
         if (language === 'ja') {
             sourceLanguage.textContent = '日本語';
@@ -437,6 +554,9 @@ document.addEventListener('DOMContentLoaded', function() {
         status.classList.remove('recording');
         status.classList.add('processing');
         
+        // TTS停止
+        stopTTS();
+        
         // ボタン表示を更新 - 開始ボタンを表示、停止ボタンを非表示
         updateButtonVisibility(false);
         
@@ -471,6 +591,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentTranslationController.abort();
                 currentTranslationController = null;
             }
+            // 前のTTSも停止
+            stopTTS();
         }
         
         translationInProgress = true;
@@ -568,6 +690,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             console.log('翻訳完了');
+            
+            // TTS再生（翻訳完了後）
+            if (translationResult && translationResult.trim()) {
+                speakTranslation(translationResult, selectedLanguage);
+            }
             
             // 現在のコントローラーをリセット
             currentTranslationController = null;

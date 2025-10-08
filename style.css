@@ -294,6 +294,22 @@ body {
     display: inline-block;
 }
 
+/* TTS再生中インジケータのスタイル */
+#speakingIndicator {
+    background-color: #e8f5e9;
+    color: #2ecc71;
+    animation: pulse-speaking 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-speaking {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
 .app-footer {
     text-align: center;
     margin-top: 20px;
@@ -388,6 +404,17 @@ body {
     font-weight: 500;
     margin-bottom: 8px;
     color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.tts-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #1a73e8;
 }
 
 .form-input {

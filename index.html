@@ -99,6 +99,7 @@
                 </div>
                 <div class="result-content" id="translatedText"></div>
                 <div class="translating-indicator" id="translatingIndicator">翻訳中...</div>
+                <div class="translating-indicator" id="speakingIndicator">🔊 読み上げ中...</div>
             </div>
         </div>
         
@@ -130,6 +131,14 @@
                 <label class="form-label" for="openaiKey">OpenAI APIキー</label>
                 <input type="text" id="openaiKey" class="form-input" placeholder="sk-...">
                 <div class="form-help">APIキーは<a href="https://platform.openai.com/api-keys" target="_blank">OpenAIダッシュボード</a>から取得できます</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="ttsToggle" checked class="tts-checkbox">
+                    <span>音声読み上げ（TTS）を有効化</span>
+                </label>
+                <div class="form-help">翻訳結果を自動的に音声で読み上げます</div>
             </div>
             
             <div class="button-row">
