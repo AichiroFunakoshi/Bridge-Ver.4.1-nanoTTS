@@ -1,11 +1,169 @@
 // リアルタイム音声翻訳 - JavaScript（デバウンス最適化版）
+
+// ========================================
+// エラーレポートシステム
+// ========================================
+const ErrorReporter = {
+    logs: [],
+    maxLogs: 100,
+    hasError: false,
+
+    init: function() {
+        // console.logをインターセプト
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.log = (...args) => {
+            this.addLog('log', args);
+            originalLog.apply(console, args);
+        };
+
+        console.error = (...args) => {
+            this.addLog('error', args);
+            this.hasError = true;
+            this.showReportButton();
+            originalError.apply(console, args);
+        };
+
+        console.warn = (...args) => {
+            this.addLog('warn', args);
+            originalWarn.apply(console, args);
+        };
+
+        // グローバルエラーをキャッチ
+        window.addEventListener('error', (event) => {
+            this.addLog('error', [`グローバルエラー: ${event.message}`, event.filename, event.lineno]);
+            this.hasError = true;
+            this.showReportButton();
+        });
+
+        // Promise rejectionをキャッチ
+        window.addEventListener('unhandledrejection', (event) => {
+            this.addLog('error', [`未処理のPromise拒否: ${event.reason}`]);
+            this.hasError = true;
+            this.showReportButton();
+        });
+    },
+
+    addLog: function(level, args) {
+        const timestamp = new Date().toISOString();
+        const message = args.map(arg =>
+            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+
+        this.logs.push({
+            timestamp,
+            level,
+            message
+        });
+
+        // 最大ログ数を超えたら古いものを削除
+        if (this.logs.length > this.maxLogs) {
+            this.logs.shift();
+        }
+    },
+
+    showReportButton: function() {
+        const existingButton = document.getElementById('errorReportButton');
+        if (existingButton) return; // 既に表示済み
+
+        const button = document.createElement('button');
+        button.id = 'errorReportButton';
+        button.className = 'error-report-button';
+        button.innerHTML = '⚠️ エラーを報告';
+        button.onclick = () => this.generateReport();
+        document.body.appendChild(button);
+    },
+
+    generateReport: function() {
+        const report = {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            screenSize: `${window.screen.width}x${window.screen.height}`,
+            windowSize: `${window.innerWidth}x${window.innerHeight}`,
+            url: window.location.href,
+            logs: this.logs.slice(-50) // 最新50件
+        };
+
+        // レポート内容をモーダルで表示
+        this.showReportModal(report);
+    },
+
+    showReportModal: function(report) {
+        const modal = document.createElement('div');
+        modal.className = 'error-report-modal';
+        modal.innerHTML = `
+            <div class="error-report-content">
+                <h2>エラーレポート</h2>
+                <p>以下の内容が報告されます：</p>
+                <textarea readonly>${JSON.stringify(report, null, 2)}</textarea>
+                <div class="error-report-buttons">
+                    <button id="copyReportBtn">コピー</button>
+                    <button id="sendReportBtn">GitHubで報告</button>
+                    <button id="closeReportBtn">キャンセル</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // コピーボタン
+        document.getElementById('copyReportBtn').onclick = () => {
+            navigator.clipboard.writeText(JSON.stringify(report, null, 2));
+            alert('レポートをクリップボードにコピーしました');
+        };
+
+        // GitHub報告ボタン
+        document.getElementById('sendReportBtn').onclick = () => {
+            this.openGitHubIssue(report);
+        };
+
+        // 閉じるボタン
+        document.getElementById('closeReportBtn').onclick = () => {
+            modal.remove();
+        };
+    },
+
+    openGitHubIssue: function(report) {
+        const title = encodeURIComponent('エラーレポート: TTS機能の問題');
+        const body = encodeURIComponent(
+            `## エラーレポート\n\n` +
+            `**発生日時**: ${report.timestamp}\n\n` +
+            `**環境情報**:\n` +
+            `- ブラウザ: ${report.userAgent}\n` +
+            `- プラットフォーム: ${report.platform}\n` +
+            `- 言語: ${report.language}\n` +
+            `- 画面サイズ: ${report.screenSize}\n\n` +
+            `**ログ**:\n\`\`\`json\n${JSON.stringify(report.logs, null, 2)}\n\`\`\`\n\n` +
+            `**再現手順**:\n` +
+            `1. \n` +
+            `2. \n` +
+            `3. \n\n` +
+            `**期待される動作**:\n\n` +
+            `**実際の動作**:\n`
+        );
+
+        const issueUrl = `https://github.com/AichiroFunakoshi/Bridge-Ver.4.1-nanoTTS/issues/new?title=${title}&body=${body}`;
+        window.open(issueUrl, '_blank');
+    }
+};
+
+// エラーレポートシステムを初期化
+ErrorReporter.init();
+
+// ========================================
+// メインアプリケーション
+// ========================================
 document.addEventListener('DOMContentLoaded', function() {
     // デフォルトAPIキー
     const DEFAULT_OPENAI_API_KEY = '';
-    
+
     // APIキー保存
     let OPENAI_API_KEY = '';
-    
+
     // TTS関連変数
     let isTTSEnabled = true; // デフォルトでTTS有効
     let currentSpeechUtterance = null; // 現在再生中の音声
