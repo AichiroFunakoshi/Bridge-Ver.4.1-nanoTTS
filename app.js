@@ -168,6 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let isTTSEnabled = true; // デフォルトでTTS有効
     let currentSpeechUtterance = null; // 現在再生中の音声
     let isTTSPlaying = false; // TTS再生中フラグ
+    let ttsInitialized = false; // iOS Safari用: TTS初期化済みフラグ
     
     // DOM要素
     const startJapaneseBtn = document.getElementById('startJapaneseBtn');
@@ -269,12 +270,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
+    // iOS Safari用: TTS初期化関数
+    function initializeTTSForIOS() {
+        if (ttsInitialized) return;
+
+        console.log('iOS Safari用TTS初期化を実行');
+
+        // ダミー音声を再生してSpeech Synthesisを初期化
+        const utterance = new SpeechSynthesisUtterance('');
+        utterance.volume = 0; // 無音
+        window.speechSynthesis.speak(utterance);
+
+        ttsInitialized = true;
+        console.log('TTS初期化完了');
+    }
+
     // TTS機能: 翻訳結果を音声で読み上げ
     function speakTranslation(text, language) {
         console.log('speakTranslation呼び出し:', {
             text: text ? text.substring(0, 50) + '...' : 'null',
             language: language,
             isTTSEnabled: isTTSEnabled,
+            ttsInitialized: ttsInitialized,
             speechSynthesisAvailable: 'speechSynthesis' in window
         });
 
@@ -293,6 +310,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!('speechSynthesis' in window)) {
             console.warn('このブラウザはWeb Speech API (TTS)に対応していません');
             return;
+        }
+
+        // iOS Safari対策: 初期化されていない場合は初期化
+        if (!ttsInitialized) {
+            console.warn('TTS未初期化: ユーザー操作時に初期化されていません');
+            initializeTTSForIOS();
         }
 
         // 前の音声を停止
@@ -741,18 +764,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 指定された言語で録音開始
     async function startRecording(language) {
+        // iOS Safari対策: ユーザーのタップ時にTTSを初期化
+        if (!ttsInitialized && 'speechSynthesis' in window) {
+            initializeTTSForIOS();
+        }
+
         // エラーメッセージをクリア
         errorMessage.textContent = '';
-        
+
         // 選択言語を設定
         selectedLanguage = language;
-        
+
         // UIと変数をリセット
         processedResultIds.clear();
         lastTranslatedText = '';
         originalText.textContent = '';
         translatedText.textContent = '';
-        
+
         // TTS停止
         stopTTS();
         
@@ -941,12 +969,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             // TTS再生（翻訳完了後）
+            // iOS Safari対策: setTimeoutを使わず即座に実行
             if (translationResult && translationResult.trim()) {
                 console.log('TTS再生を開始します...');
-                // 少し遅延させてから実行（ストリーミング完了を確実にするため）
-                setTimeout(() => {
-                    speakTranslation(translationResult, selectedLanguage);
-                }, 100);
+                speakTranslation(translationResult, selectedLanguage);
             } else {
                 console.log('TTS再生スキップ: 翻訳結果が空');
             }
