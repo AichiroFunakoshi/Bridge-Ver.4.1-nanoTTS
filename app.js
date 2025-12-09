@@ -195,6 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const fontSizeMediumBtn = document.getElementById('fontSizeMedium');
     const fontSizeLargeBtn = document.getElementById('fontSizeLarge');
     const fontSizeXLargeBtn = document.getElementById('fontSizeXLarge');
+    const playTTSBtn = document.getElementById('playTTSBtn');
     
     // 音声認識変数
     let recognition = null;
@@ -203,11 +204,16 @@ document.addEventListener('DOMContentLoaded', function() {
     let translationInProgress = false;
     let selectedLanguage = ''; // 'ja' は日本語、'en' は英語
     let lastTranslationTime = 0;
-    
+    let isRecognitionRunning = false; // 音声認識が実行中かどうか
+    let recognitionRestartPending = false; // 再開待ち状態
+
     // 重複防止のための変数
     let processedResultIds = new Set(); // 処理済みの結果IDを追跡
     let lastTranslatedText = ''; // 最後に翻訳した内容を記録
     let translationDebounceTimer = null;
+
+    // TTS用の最終翻訳結果を保存
+    let lastTranslationResult = '';
 
     // 言語別最適デバウンス設定（科学的アプローチに基づく）
     const OPTIMAL_DEBOUNCE = {
@@ -328,12 +334,12 @@ document.addEventListener('DOMContentLoaded', function() {
         isTTSPlaying = true;
 
         // 音声認識を一時停止（TTSの音声を拾わないようにするため）
-        if (isRecording && recognition) {
+        if (isRecording && recognition && isRecognitionRunning) {
             try {
                 console.log('TTS再生のため音声認識を一時停止');
                 recognition.stop();
             } catch (e) {
-                console.error('音声認識の停止に失敗', e);
+                console.error('音声認識の停止に失敗:', e.message);
             }
         }
 
@@ -369,14 +375,18 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSpeechUtterance = null;
             isTTSPlaying = false;
 
-            // TTS終了後、録音中であれば音声認識を再開
-            if (isRecording && recognition) {
-                try {
-                    console.log('TTS終了、音声認識を再開');
-                    recognition.start();
-                } catch (e) {
-                    console.error('音声認識の再開に失敗', e);
-                }
+            // TTS終了後、録音中かつ再開待ちであれば音声認識を再開
+            if (isRecording && recognition && !isRecognitionRunning) {
+                setTimeout(() => {
+                    if (isRecording && !isRecognitionRunning && !isTTSPlaying) {
+                        try {
+                            console.log('TTS終了、音声認識を再開');
+                            recognition.start();
+                        } catch (e) {
+                            console.error('音声認識の再開に失敗:', e.message);
+                        }
+                    }
+                }, 200);
             }
         };
 
@@ -389,13 +399,17 @@ document.addEventListener('DOMContentLoaded', function() {
             isTTSPlaying = false;
 
             // エラー時も音声認識を再開
-            if (isRecording && recognition) {
-                try {
-                    console.log('TTSエラー後、音声認識を再開');
-                    recognition.start();
-                } catch (e) {
-                    console.error('音声認識の再開に失敗', e);
-                }
+            if (isRecording && recognition && !isRecognitionRunning) {
+                setTimeout(() => {
+                    if (isRecording && !isRecognitionRunning && !isTTSPlaying) {
+                        try {
+                            console.log('TTSエラー後、音声認識を再開');
+                            recognition.start();
+                        } catch (e) {
+                            console.error('音声認識の再開に失敗:', e.message);
+                        }
+                    }
+                }, 200);
             }
         };
 
@@ -416,27 +430,52 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // TTS停止関数
     function stopTTS() {
-        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        if (window.speechSynthesis) {
             window.speechSynthesis.cancel();
-            if (speakingIndicator) {
-                speakingIndicator.classList.remove('visible');
-            }
-            currentSpeechUtterance = null;
-            isTTSPlaying = false;
-            console.log('TTS停止');
+        }
+        if (speakingIndicator) {
+            speakingIndicator.classList.remove('visible');
+        }
+        currentSpeechUtterance = null;
+        isTTSPlaying = false;
+        console.log('TTS停止');
+    }
 
-            // 録音中であれば音声認識を再開
-            if (isRecording && recognition) {
-                try {
-                    console.log('TTS停止後、音声認識を再開');
-                    recognition.start();
-                } catch (e) {
-                    console.error('音声認識の再開に失敗', e);
-                }
+    // 再生ボタンの有効/無効を切り替え
+    function updatePlayButton(enabled) {
+        if (playTTSBtn) {
+            playTTSBtn.disabled = !enabled;
+            playTTSBtn.style.opacity = enabled ? '1' : '0.5';
+            if (enabled) {
+                playTTSBtn.classList.add('has-content');
+            } else {
+                playTTSBtn.classList.remove('has-content');
             }
         }
     }
-    
+
+    // 手動TTS再生関数（再生ボタン用）
+    function playTranslation() {
+        // iOS Safari対策: ユーザーのタップ時にTTSを初期化
+        if (!ttsInitialized && 'speechSynthesis' in window) {
+            initializeTTSForIOS();
+        }
+
+        if (!lastTranslationResult || !lastTranslationResult.trim()) {
+            console.log('再生する翻訳結果がありません');
+            return;
+        }
+
+        // TTS再生中なら停止
+        if (isTTSPlaying) {
+            stopTTS();
+            return;
+        }
+
+        console.log('手動TTS再生を開始:', lastTranslationResult.substring(0, 50) + '...');
+        speakTranslation(lastTranslationResult, selectedLanguage);
+    }
+
     // APIキー読み込み
     function loadApiKeys() {
         const storedOpenaiKey = localStorage.getItem('translatorOpenaiKey');
@@ -574,7 +613,14 @@ document.addEventListener('DOMContentLoaded', function() {
         fontSizeMediumBtn.addEventListener('click', () => changeFontSize('medium'));
         fontSizeLargeBtn.addEventListener('click', () => changeFontSize('large'));
         fontSizeXLargeBtn.addEventListener('click', () => changeFontSize('xlarge'));
-        
+
+        // TTS再生ボタンの設定
+        if (playTTSBtn) {
+            playTTSBtn.addEventListener('click', playTranslation);
+            // 初期状態は無効
+            updatePlayButton(false);
+        }
+
         // 保存されたフォントサイズ設定があれば適用
         const savedFontSize = localStorage.getItem('translatorFontSize') || 'medium';
         changeFontSize(savedFontSize);
@@ -596,12 +642,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetContent() {
         // TTS停止
         stopTTS();
-        
+
         // リセット処理
         processedResultIds.clear();
         lastTranslatedText = '';
+        lastTranslationResult = ''; // TTS用の翻訳結果もクリア
         originalText.textContent = '';
         translatedText.textContent = '';
+
+        // 再生ボタンを無効化
+        updatePlayButton(false);
         
         // ステータス表示も更新
         status.textContent = '待機中';
@@ -632,23 +682,40 @@ document.addEventListener('DOMContentLoaded', function() {
         
         recognition.onstart = function() {
             console.log('音声認識開始。言語:', recognition.lang);
+            isRecognitionRunning = true;
+            recognitionRestartPending = false;
             listeningIndicator.classList.add('visible');
         };
-        
+
         recognition.onend = function() {
             console.log('音声認識終了');
+            isRecognitionRunning = false;
             listeningIndicator.classList.remove('visible');
 
-            // 録音中かつTTS再生中でない場合は再開
-            if (isRecording && !isTTSPlaying) {
-                try {
-                    console.log('音声認識を再開');
-                    recognition.start();
-                } catch (e) {
-                    console.error('音声認識の再開に失敗', e);
+            // 録音中の場合のみ再開を検討
+            if (isRecording) {
+                // TTS再生中は再開しない
+                if (isTTSPlaying) {
+                    console.log('TTS再生中のため音声認識は再開しない');
+                    recognitionRestartPending = true;
+                    return;
                 }
-            } else if (isTTSPlaying) {
-                console.log('TTS再生中のため音声認識は再開しない');
+
+                // 少し遅延を入れて再開（連続再開を防ぐ）
+                setTimeout(() => {
+                    if (isRecording && !isRecognitionRunning && !isTTSPlaying) {
+                        try {
+                            console.log('音声認識を再開');
+                            recognition.start();
+                        } catch (e) {
+                            console.error('音声認識の再開に失敗:', e.message);
+                            // 既に実行中の場合は無視
+                            if (e.message.includes('already started')) {
+                                isRecognitionRunning = true;
+                            }
+                        }
+                    }
+                }, 100);
             }
         };
         
@@ -964,17 +1031,18 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log('翻訳完了:', {
                 resultLength: translationResult.length,
-                selectedLanguage: selectedLanguage,
-                isTTSEnabled: isTTSEnabled
+                selectedLanguage: selectedLanguage
             });
 
-            // TTS再生（翻訳完了後）
-            // iOS Safari対策: setTimeoutを使わず即座に実行
+            // 翻訳結果を保存（手動TTS再生用）
             if (translationResult && translationResult.trim()) {
-                console.log('TTS再生を開始します...');
-                speakTranslation(translationResult, selectedLanguage);
+                lastTranslationResult = translationResult;
+                // 再生ボタンを有効化
+                updatePlayButton(true);
+                console.log('翻訳結果を保存しました。再生ボタンで読み上げ可能です。');
             } else {
-                console.log('TTS再生スキップ: 翻訳結果が空');
+                lastTranslationResult = '';
+                updatePlayButton(false);
             }
 
             // 現在のコントローラーをリセット
