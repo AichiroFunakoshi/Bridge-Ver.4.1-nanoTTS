@@ -442,9 +442,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 再生ボタンの有効/無効を切り替え
     function updatePlayButton(enabled) {
         if (playTTSBtn) {
-            playTTSBtn.disabled = !enabled;
-            playTTSBtn.style.opacity = enabled ? '1' : '0.5';
-            if (enabled) {
+            // TTS無効時は常にボタンを無効化
+            const shouldEnable = enabled && isTTSEnabled;
+            playTTSBtn.disabled = !shouldEnable;
+            playTTSBtn.style.opacity = shouldEnable ? '1' : '0.5';
+            if (shouldEnable) {
                 playTTSBtn.classList.add('has-content');
             } else {
                 playTTSBtn.classList.remove('has-content');
@@ -558,6 +560,8 @@ document.addEventListener('DOMContentLoaded', function() {
             isTTSEnabled = ttsToggle.checked;
             localStorage.setItem('translatorTTSEnabled', isTTSEnabled.toString());
             console.log('TTS設定変更:', isTTSEnabled ? '有効' : '無効');
+            // TTS設定変更時に再生ボタンの状態を更新
+            updatePlayButton(!!lastTranslationResult);
         });
     }
     
@@ -829,8 +833,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // UIと変数をリセット
         processedResultIds.clear();
         lastTranslatedText = '';
+        lastTranslationResult = ''; // 前回の翻訳結果をクリア
         originalText.textContent = '';
         translatedText.textContent = '';
+
+        // 再生ボタンを無効化
+        updatePlayButton(false);
 
         // TTS停止
         stopTTS();
