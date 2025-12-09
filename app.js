@@ -205,7 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedLanguage = ''; // 'ja' は日本語、'en' は英語
     let lastTranslationTime = 0;
     let isRecognitionRunning = false; // 音声認識が実行中かどうか
-    let recognitionRestartPending = false; // 再開待ち状態
 
     // 重複防止のための変数
     let processedResultIds = new Set(); // 処理済みの結果IDを追跡
@@ -339,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('TTS再生のため音声認識を一時停止');
                 recognition.stop();
             } catch (e) {
-                console.error('音声認識の停止に失敗:', e.message);
+                console.error('音声認識の停止に失敗:', e?.message || e);
             }
         }
 
@@ -375,19 +374,8 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSpeechUtterance = null;
             isTTSPlaying = false;
 
-            // TTS終了後、録音中かつ再開待ちであれば音声認識を再開
-            if (isRecording && recognition && !isRecognitionRunning) {
-                setTimeout(() => {
-                    if (isRecording && !isRecognitionRunning && !isTTSPlaying) {
-                        try {
-                            console.log('TTS終了、音声認識を再開');
-                            recognition.start();
-                        } catch (e) {
-                            console.error('音声認識の再開に失敗:', e.message);
-                        }
-                    }
-                }, 200);
-            }
+            // TTS終了後、録音中であれば音声認識を再開
+            safeRestartRecognition(200, 'TTS終了');
         };
 
         utterance.onerror = function(event) {
@@ -399,18 +387,7 @@ document.addEventListener('DOMContentLoaded', function() {
             isTTSPlaying = false;
 
             // エラー時も音声認識を再開
-            if (isRecording && recognition && !isRecognitionRunning) {
-                setTimeout(() => {
-                    if (isRecording && !isRecognitionRunning && !isTTSPlaying) {
-                        try {
-                            console.log('TTSエラー後、音声認識を再開');
-                            recognition.start();
-                        } catch (e) {
-                            console.error('音声認識の再開に失敗:', e.message);
-                        }
-                    }
-                }, 200);
-            }
+            safeRestartRecognition(200, 'TTSエラー後');
         };
 
         // 音声を再生
@@ -439,6 +416,27 @@ document.addEventListener('DOMContentLoaded', function() {
         currentSpeechUtterance = null;
         isTTSPlaying = false;
         console.log('TTS停止');
+    }
+
+    // 音声認識を安全に再開するヘルパー関数
+    function safeRestartRecognition(delayMs = 100, source = '') {
+        if (!isRecording || !recognition) {
+            return;
+        }
+        setTimeout(() => {
+            if (isRecording && !isRecognitionRunning && !isTTSPlaying) {
+                try {
+                    console.log(`音声認識を再開${source ? ' (' + source + ')' : ''}`);
+                    recognition.start();
+                } catch (e) {
+                    console.error('音声認識の再開に失敗:', e?.message || e);
+                    // 既に実行中の場合は無視
+                    if (e?.message?.includes('already started')) {
+                        isRecognitionRunning = true;
+                    }
+                }
+            }
+        }, delayMs);
     }
 
     // 再生ボタンの有効/無効を切り替え
@@ -683,7 +681,6 @@ document.addEventListener('DOMContentLoaded', function() {
         recognition.onstart = function() {
             console.log('音声認識開始。言語:', recognition.lang);
             isRecognitionRunning = true;
-            recognitionRestartPending = false;
             listeningIndicator.classList.add('visible');
         };
 
@@ -697,25 +694,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // TTS再生中は再開しない
                 if (isTTSPlaying) {
                     console.log('TTS再生中のため音声認識は再開しない');
-                    recognitionRestartPending = true;
                     return;
                 }
 
                 // 少し遅延を入れて再開（連続再開を防ぐ）
-                setTimeout(() => {
-                    if (isRecording && !isRecognitionRunning && !isTTSPlaying) {
-                        try {
-                            console.log('音声認識を再開');
-                            recognition.start();
-                        } catch (e) {
-                            console.error('音声認識の再開に失敗:', e.message);
-                            // 既に実行中の場合は無視
-                            if (e.message.includes('already started')) {
-                                isRecognitionRunning = true;
-                            }
-                        }
-                    }
-                }, 100);
+                safeRestartRecognition(100, 'onend');
             }
         };
         
@@ -881,7 +864,7 @@ document.addEventListener('DOMContentLoaded', function() {
             recognition.start();
         } catch (e) {
             console.error('音声認識開始エラー', e);
-            errorMessage.textContent = '音声認識の開始に失敗しました: ' + e.message;
+            errorMessage.textContent = '音声認識の開始に失敗しました: ' + (e?.message || e);
             stopRecording();
         }
     }
