@@ -430,8 +430,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     recognition.start();
                 } catch (e) {
                     console.error('音声認識の再開に失敗:', e?.message || e);
-                    // 既に実行中の場合は無視
-                    if (e?.message?.includes('already started')) {
+                    // 既に実行中の場合は無視（DOMException.nameまたはメッセージで判定）
+                    if (e?.name === 'InvalidStateError' || e?.message?.includes('already started')) {
                         isRecognitionRunning = true;
                     }
                 }
@@ -464,9 +464,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // TTS再生中なら停止
+        // TTS再生中なら停止し、録音中であれば音声認識を再開
         if (isTTSPlaying) {
             stopTTS();
+            safeRestartRecognition(200, 'TTS手動停止');
             return;
         }
 
