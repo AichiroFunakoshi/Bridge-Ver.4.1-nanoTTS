@@ -774,10 +774,13 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         recognition.onerror = function(event) {
-            console.error('音声認識エラー', event.error);
-            
+            console.log('音声認識エラー:', event.error);
+
             if (event.error === 'no-speech') {
                 // 音声が検出されない - 正常な状態
+            } else if (event.error === 'aborted') {
+                // TTS再生等のために意図的に停止された - 正常な状態
+                console.log('音声認識が中断されました（意図的な停止）');
             } else if (event.error === 'audio-capture') {
                 status.textContent = 'マイクが検出されません';
                 status.classList.remove('idle', 'recording');
