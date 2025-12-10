@@ -774,25 +774,30 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         recognition.onerror = function(event) {
-            console.log('音声認識エラー:', event.error);
-
+            // no-speechとabortedは正常な状態として扱う
             if (event.error === 'no-speech') {
                 // 音声が検出されない - 正常な状態
+                console.log('音声認識: 音声が検出されません');
             } else if (event.error === 'aborted') {
                 // TTS再生等のために意図的に停止された - 正常な状態
                 console.log('音声認識が中断されました（意図的な停止）');
             } else if (event.error === 'audio-capture') {
+                console.error('音声認識エラー:', event.error);
                 status.textContent = 'マイクが検出されません';
                 status.classList.remove('idle', 'recording');
                 status.classList.add('error');
                 errorMessage.textContent = 'マイクが検出できません。デバイス設定を確認してください。';
                 stopRecording();
             } else if (event.error === 'not-allowed') {
+                console.error('音声認識エラー:', event.error);
                 status.textContent = 'マイク権限が拒否されています';
                 status.classList.remove('idle', 'recording');
                 status.classList.add('error');
                 errorMessage.textContent = 'マイクアクセスが拒否されました。ブラウザ設定でマイク権限を許可してください。';
                 stopRecording();
+            } else {
+                // その他の未知のエラー
+                console.error('音声認識エラー:', event.error);
             }
         };
     }
