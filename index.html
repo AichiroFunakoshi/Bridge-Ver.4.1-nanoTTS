@@ -75,13 +75,6 @@
             <div class="error-message" id="errorMessage"></div>
         </div>
         
-        <div class="font-size-controls">
-            <button class="font-size-button" id="fontSizeSmall">A-</button>
-            <button class="font-size-button" id="fontSizeMedium">A</button>
-            <button class="font-size-button" id="fontSizeLarge">A+</button>
-            <button class="font-size-button" id="fontSizeXLarge">A++</button>
-        </div>
-        
         <div class="result-container">
             <div class="result-box">
                 <div class="result-title">
@@ -92,20 +85,15 @@
                 <div class="translating-indicator" id="listeningIndicator">話し中...</div>
             </div>
             
-            <div class="result-box">
+            <div class="result-box translation-box" id="translationBox" role="button" tabindex="0" aria-label="翻訳結果を読み上げ">
                 <div class="result-title">
                     <span>翻訳</span>
                     <span class="language-indicator" id="targetLanguage"></span>
+                    <span class="tap-hint" id="tapHint">タップで再生</span>
                 </div>
                 <div class="result-content" id="translatedText"></div>
                 <div class="translating-indicator" id="translatingIndicator">翻訳中...</div>
-                <div class="translating-indicator" id="speakingIndicator">🔊 読み上げ中...</div>
-                <button class="play-tts-button" id="playTTSBtn" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" width="16" height="16">
-                        <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
-                    </svg>
-                    <span>再生 / Play</span>
-                </button>
+                <div class="translating-indicator" id="speakingIndicator">読み上げ中...</div>
             </div>
         </div>
         
@@ -144,9 +132,22 @@
                     <input type="checkbox" id="ttsToggle" checked class="tts-checkbox">
                     <span>音声読み上げ（TTS）を有効化</span>
                 </label>
-                <div class="form-help">翻訳結果を「再生」ボタンで音声読み上げできます</div>
+                <div class="form-help">翻訳ボックスをタップで音声読み上げできます</div>
             </div>
-            
+
+            <div class="form-group">
+                <label class="form-label">文字サイズ</label>
+                <div class="font-size-preview" id="fontSizePreview">
+                    <span class="preview-text">あ / A</span>
+                </div>
+                <div class="font-size-controls-modal">
+                    <button class="font-size-btn" id="fontSizeSmall">小</button>
+                    <button class="font-size-btn" id="fontSizeMedium">中</button>
+                    <button class="font-size-btn" id="fontSizeLarge">大</button>
+                    <button class="font-size-btn" id="fontSizeXLarge">特大</button>
+                </div>
+            </div>
+
             <div class="button-row">
                 <button id="saveApiKeys" class="language-button">保存して開始</button>
             </div>
