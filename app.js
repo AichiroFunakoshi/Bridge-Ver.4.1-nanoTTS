@@ -579,7 +579,17 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTranslationBoxState(!!lastTranslationResult);
         });
     }
-    
+
+    // フォントサイズ変更ボタンの設定（モーダル内でAPIキー入力前から使えるように早期バインド）
+    if (fontSizeSmallBtn) fontSizeSmallBtn.addEventListener('click', () => changeFontSize('small'));
+    if (fontSizeMediumBtn) fontSizeMediumBtn.addEventListener('click', () => changeFontSize('medium'));
+    if (fontSizeLargeBtn) fontSizeLargeBtn.addEventListener('click', () => changeFontSize('large'));
+    if (fontSizeXLargeBtn) fontSizeXLargeBtn.addEventListener('click', () => changeFontSize('xlarge'));
+
+    // 保存されたフォントサイズ設定を早期適用（APIキー入力前から反映）
+    const initialFontSize = localStorage.getItem('translatorFontSize') || 'medium';
+    changeFontSize(initialFontSize);
+
     // フォントサイズプレビューの更新関数
     function updateFontSizePreview(size) {
         if (!fontSizePreview) return;
@@ -663,26 +673,20 @@ document.addEventListener('DOMContentLoaded', function() {
         stopBtn.addEventListener('click', stopRecording);
         resetBtn.addEventListener('click', resetContent);
         
-        // フォントサイズ変更ボタンの設定
-        fontSizeSmallBtn.addEventListener('click', () => changeFontSize('small'));
-        fontSizeMediumBtn.addEventListener('click', () => changeFontSize('medium'));
-        fontSizeLargeBtn.addEventListener('click', () => changeFontSize('large'));
-        fontSizeXLargeBtn.addEventListener('click', () => changeFontSize('xlarge'));
-
-        // 翻訳ボックスのタップでTTS再生
+        // 翻訳ボックスのタップ/キーボードでTTS再生
         if (translationBox) {
             translationBox.addEventListener('click', playTranslation);
+            // キーボードアクセシビリティ対応（Enter/Space）
+            translationBox.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    playTranslation();
+                }
+            });
             // 初期状態は無効
             updateTranslationBoxState(false);
         }
 
-        // 保存されたフォントサイズ設定があれば適用
-        const savedFontSize = localStorage.getItem('translatorFontSize') || 'medium';
-        changeFontSize(savedFontSize);
-
-        // フォントサイズプレビューを更新
-        updateFontSizePreview(savedFontSize);
-        
         // 翻訳システムプロンプト
         window.SYSTEM_PROMPT = `あなたは日本語と英語の専門的な同時通訳者です。
 音声入力データを以下のルールに従って読みやすいテキストに変換して翻訳してください：

@@ -753,21 +753,23 @@ body {
    翻訳ボックス タップで再生
    ======================================== */
 .translation-box {
-    cursor: pointer;
+    cursor: default;
     transition: all 0.3s ease;
     border-left: 4px solid #4CAF50;
 }
 
-.translation-box:hover {
+/* TTS有効かつコンテンツがある場合のみインタラクティブ */
+.translation-box.has-content {
+    cursor: pointer;
+    background-color: #fafffe;
+}
+
+.translation-box.has-content:hover {
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
 }
 
-.translation-box:active {
+.translation-box.has-content:active {
     transform: scale(0.99);
-}
-
-.translation-box.has-content {
-    background-color: #fafffe;
 }
 
 .translation-box.tts-playing {
@@ -805,15 +807,12 @@ body {
     color: #e74c3c;
 }
 
-.translation-box.tts-playing .tap-hint::after {
-    content: 'タップで停止';
-}
-
 .translation-box.tts-playing .tap-hint {
     font-size: 0;
 }
 
 .translation-box.tts-playing .tap-hint::after {
+    content: 'タップで停止';
     font-size: 11px;
 }
 
