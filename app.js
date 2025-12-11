@@ -195,7 +195,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const fontSizeMediumBtn = document.getElementById('fontSizeMedium');
     const fontSizeLargeBtn = document.getElementById('fontSizeLarge');
     const fontSizeXLargeBtn = document.getElementById('fontSizeXLarge');
-    const playTTSBtn = document.getElementById('playTTSBtn');
+    const translationBox = document.getElementById('translationBox');
+    const tapHint = document.getElementById('tapHint');
+    const fontSizePreview = document.getElementById('fontSizePreview');
     
     // 音声認識変数
     let recognition = null;
@@ -364,6 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (speakingIndicator) {
                 speakingIndicator.classList.add('visible');
             }
+            updateTTSPlayingState(true);
         };
 
         utterance.onend = function() {
@@ -373,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             currentSpeechUtterance = null;
             isTTSPlaying = false;
+            updateTTSPlayingState(false);
 
             // TTS終了後、録音中であれば音声認識を再開
             safeRestartRecognition(200, 'TTS終了');
@@ -385,6 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             currentSpeechUtterance = null;
             isTTSPlaying = false;
+            updateTTSPlayingState(false);
 
             // エラー時も音声認識を再開
             safeRestartRecognition(200, 'TTSエラー後');
@@ -415,6 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         currentSpeechUtterance = null;
         isTTSPlaying = false;
+        updateTTSPlayingState(false);
         console.log('TTS停止');
     }
 
@@ -439,17 +445,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }, delayMs);
     }
 
-    // 再生ボタンの有効/無効を切り替え
-    function updatePlayButton(enabled) {
-        if (playTTSBtn) {
-            // TTS無効時は常にボタンを無効化
-            const shouldEnable = enabled && isTTSEnabled;
-            playTTSBtn.disabled = !shouldEnable;
-            playTTSBtn.style.opacity = shouldEnable ? '1' : '0.5';
+    // 翻訳ボックスの状態を更新（タップ可能表示）
+    function updateTranslationBoxState(hasContent) {
+        if (translationBox) {
+            // TTS有効かつコンテンツがある場合のみタップ可能
+            const shouldEnable = hasContent && isTTSEnabled;
             if (shouldEnable) {
-                playTTSBtn.classList.add('has-content');
+                translationBox.classList.add('has-content');
             } else {
-                playTTSBtn.classList.remove('has-content');
+                translationBox.classList.remove('has-content');
+            }
+        }
+    }
+
+    // TTS再生中の視覚的フィードバックを更新
+    function updateTTSPlayingState(isPlaying) {
+        if (translationBox) {
+            if (isPlaying) {
+                translationBox.classList.add('tts-playing');
+            } else {
+                translationBox.classList.remove('tts-playing');
             }
         }
     }
@@ -561,22 +576,59 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('translatorTTSEnabled', isTTSEnabled.toString());
             console.log('TTS設定変更:', isTTSEnabled ? '有効' : '無効');
             // TTS設定変更時に再生ボタンの状態を更新
-            updatePlayButton(!!lastTranslationResult);
+            updateTranslationBoxState(!!lastTranslationResult);
         });
     }
     
+    // フォントサイズプレビューの更新関数
+    function updateFontSizePreview(size) {
+        if (!fontSizePreview) return;
+
+        // サイズに応じたフォントサイズを設定
+        const fontSizes = {
+            'small': '14px',
+            'medium': '18px',
+            'large': '24px',
+            'xlarge': '32px'
+        };
+
+        const previewText = fontSizePreview.querySelector('.preview-text');
+        if (previewText) {
+            previewText.style.fontSize = fontSizes[size] || '18px';
+        }
+
+        // ボタンのアクティブ状態を更新
+        [fontSizeSmallBtn, fontSizeMediumBtn, fontSizeLargeBtn, fontSizeXLargeBtn].forEach(btn => {
+            if (btn) btn.classList.remove('active');
+        });
+
+        const buttonMap = {
+            'small': fontSizeSmallBtn,
+            'medium': fontSizeMediumBtn,
+            'large': fontSizeLargeBtn,
+            'xlarge': fontSizeXLargeBtn
+        };
+
+        if (buttonMap[size]) {
+            buttonMap[size].classList.add('active');
+        }
+    }
+
     // フォントサイズ変更関数
     function changeFontSize(size) {
         // すべてのサイズクラスを削除
         originalText.classList.remove('size-small', 'size-medium', 'size-large', 'size-xlarge');
         translatedText.classList.remove('size-small', 'size-medium', 'size-large', 'size-xlarge');
-        
+
         // 選択されたサイズクラスを追加
         originalText.classList.add(`size-${size}`);
         translatedText.classList.add(`size-${size}`);
-        
+
         // ローカルストレージに保存してユーザー設定を記憶
         localStorage.setItem('translatorFontSize', size);
+
+        // プレビューも更新
+        updateFontSizePreview(size);
     }
     
     // アプリの初期化
@@ -617,16 +669,19 @@ document.addEventListener('DOMContentLoaded', function() {
         fontSizeLargeBtn.addEventListener('click', () => changeFontSize('large'));
         fontSizeXLargeBtn.addEventListener('click', () => changeFontSize('xlarge'));
 
-        // TTS再生ボタンの設定
-        if (playTTSBtn) {
-            playTTSBtn.addEventListener('click', playTranslation);
+        // 翻訳ボックスのタップでTTS再生
+        if (translationBox) {
+            translationBox.addEventListener('click', playTranslation);
             // 初期状態は無効
-            updatePlayButton(false);
+            updateTranslationBoxState(false);
         }
 
         // 保存されたフォントサイズ設定があれば適用
         const savedFontSize = localStorage.getItem('translatorFontSize') || 'medium';
         changeFontSize(savedFontSize);
+
+        // フォントサイズプレビューを更新
+        updateFontSizePreview(savedFontSize);
         
         // 翻訳システムプロンプト
         window.SYSTEM_PROMPT = `あなたは日本語と英語の専門的な同時通訳者です。
@@ -654,7 +709,7 @@ document.addEventListener('DOMContentLoaded', function() {
         translatedText.textContent = '';
 
         // 再生ボタンを無効化
-        updatePlayButton(false);
+        updateTranslationBoxState(false);
         
         // ステータス表示も更新
         status.textContent = '待機中';
@@ -846,7 +901,7 @@ document.addEventListener('DOMContentLoaded', function() {
         translatedText.textContent = '';
 
         // 再生ボタンを無効化
-        updatePlayButton(false);
+        updateTranslationBoxState(false);
 
         // TTS停止
         stopTTS();
@@ -1038,11 +1093,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (translationResult && translationResult.trim()) {
                 lastTranslationResult = translationResult;
                 // 再生ボタンを有効化
-                updatePlayButton(true);
+                updateTranslationBoxState(true);
                 console.log('翻訳結果を保存しました。再生ボタンで読み上げ可能です。');
             } else {
                 lastTranslationResult = '';
-                updatePlayButton(false);
+                updateTranslationBoxState(false);
             }
 
             // 現在のコントローラーをリセット

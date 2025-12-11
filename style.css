@@ -167,34 +167,9 @@ body {
     color: #dc3545;
 }
 
+/* メイン画面のフォントサイズコントロールは非表示（設定モーダルに移動） */
 .font-size-controls {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    margin-top: 10px;
-}
-
-.font-size-button {
-    background-color: #f0f0f0;
-    border: none;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-weight: bold;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    transition: all 0.2s;
-}
-
-.font-size-button:hover {
-    background-color: #e0e0e0;
-}
-
-.font-size-button:active {
-    transform: scale(0.95);
+    display: none;
 }
 
 .result-container {
@@ -771,5 +746,192 @@ body {
     .play-tts-button svg {
         width: 14px;
         height: 14px;
+    }
+}
+
+/* ========================================
+   翻訳ボックス タップで再生
+   ======================================== */
+.translation-box {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 4px solid #4CAF50;
+}
+
+.translation-box:hover {
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+}
+
+.translation-box:active {
+    transform: scale(0.99);
+}
+
+.translation-box.has-content {
+    background-color: #fafffe;
+}
+
+.translation-box.tts-playing {
+    animation: tts-glow 1.5s ease-in-out infinite;
+    border-left-color: #2ecc71;
+    background-color: #f0fff4;
+}
+
+@keyframes tts-glow {
+    0%, 100% {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 0 10px rgba(76, 175, 80, 0.3);
+    }
+    50% {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 0 20px rgba(76, 175, 80, 0.5);
+    }
+}
+
+/* タップヒント */
+.tap-hint {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background-color: #e8f5e9;
+    color: #4CAF50;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.translation-box.has-content .tap-hint {
+    opacity: 1;
+}
+
+.translation-box.tts-playing .tap-hint {
+    background-color: #ffebee;
+    color: #e74c3c;
+}
+
+.translation-box.tts-playing .tap-hint::after {
+    content: 'タップで停止';
+}
+
+.translation-box.tts-playing .tap-hint {
+    font-size: 0;
+}
+
+.translation-box.tts-playing .tap-hint::after {
+    font-size: 11px;
+}
+
+/* ========================================
+   設定モーダル内フォントサイズコントロール
+   ======================================== */
+.font-size-preview {
+    background-color: #f5f5f7;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    margin-bottom: 12px;
+    border: 1px solid #e0e0e0;
+}
+
+.font-size-preview .preview-text {
+    font-size: 24px;
+    font-weight: 500;
+    color: #333;
+    transition: font-size 0.3s ease;
+}
+
+.font-size-preview.size-small .preview-text {
+    font-size: 18px;
+}
+
+.font-size-preview.size-medium .preview-text {
+    font-size: 24px;
+}
+
+.font-size-preview.size-large .preview-text {
+    font-size: 30px;
+}
+
+.font-size-preview.size-xlarge .preview-text {
+    font-size: 36px;
+}
+
+.font-size-controls-modal {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.font-size-btn {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: white;
+    color: #333;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.font-size-btn:hover {
+    border-color: #1a73e8;
+    color: #1a73e8;
+}
+
+.font-size-btn.active {
+    background-color: #1a73e8;
+    border-color: #1a73e8;
+    color: white;
+}
+
+/* ========================================
+   リセットボタン調整（小さく）
+   ======================================== */
+.language-button.reset {
+    padding: 8px 12px;
+    font-size: 0;
+}
+
+.language-button.reset .language-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* モバイル対応追加 */
+@media (max-width: 600px) {
+    .font-size-controls-modal {
+        gap: 6px;
+    }
+
+    .font-size-btn {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    .translation-box {
+        padding: 15px;
+    }
+
+    .tap-hint {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .font-size-btn {
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+
+    .font-size-preview {
+        padding: 12px;
+    }
+
+    .language-button.reset {
+        padding: 6px 10px;
+    }
+
+    .language-button.reset .language-icon {
+        width: 16px;
+        height: 16px;
     }
 }
