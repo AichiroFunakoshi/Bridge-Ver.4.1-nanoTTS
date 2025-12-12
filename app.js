@@ -646,6 +646,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // アプリの初期化
     function initializeApp() {
+        // 既に初期化済みの場合は早期リターン
+        if (appInitialized) {
+            console.log('アプリは既に初期化済みです。再初期化をスキップします。');
+            // TTS設定の同期のみ実行（毎回必要）
+            if (ttsToggle) {
+                ttsToggle.checked = isTTSEnabled;
+            }
+            return;
+        }
+
         // エラーメッセージをクリア
         errorMessage.textContent = '';
 
@@ -668,12 +678,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // TTS設定の初期化
         if (ttsToggle) {
             ttsToggle.checked = isTTSEnabled;
-        }
-
-        // 既に初期化済みの場合はイベントリスナーを再登録しない
-        if (appInitialized) {
-            console.log('アプリは既に初期化済みです。イベントリスナーの再登録をスキップします。');
-            return;
         }
 
         // 言語ボタンを有効化
