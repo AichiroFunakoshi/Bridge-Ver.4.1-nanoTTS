@@ -216,6 +216,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // TTS用の最終翻訳結果を保存
     let lastTranslationResult = '';
 
+    // アプリ初期化フラグ（イベントリスナー重複登録防止）
+    let appInitialized = false;
+
     // 言語別最適デバウンス設定（科学的アプローチに基づく）
     const OPTIMAL_DEBOUNCE = {
         'ja': 346,  // 日本語最適値（文節区切り対応・31%改善）
@@ -645,7 +648,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function initializeApp() {
         // エラーメッセージをクリア
         errorMessage.textContent = '';
-        
+
         // Web Speech APIのサポート確認
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             setupSpeechRecognition();
@@ -656,23 +659,29 @@ document.addEventListener('DOMContentLoaded', function() {
             errorMessage.textContent = 'ブラウザが音声認識に対応していません。Chrome、Safari、またはEdgeをお使いください。';
             return;
         }
-        
+
         // TTS対応確認
         if (!('speechSynthesis' in window)) {
             console.warn('このブラウザはTTSに対応していません');
         }
-        
+
         // TTS設定の初期化
         if (ttsToggle) {
             ttsToggle.checked = isTTSEnabled;
         }
-        
+
+        // 既に初期化済みの場合はイベントリスナーを再登録しない
+        if (appInitialized) {
+            console.log('アプリは既に初期化済みです。イベントリスナーの再登録をスキップします。');
+            return;
+        }
+
         // 言語ボタンを有効化
         startJapaneseBtn.addEventListener('click', () => startRecording('ja'));
         startEnglishBtn.addEventListener('click', () => startRecording('en'));
         stopBtn.addEventListener('click', stopRecording);
         resetBtn.addEventListener('click', resetContent);
-        
+
         // 翻訳ボックスのタップ/キーボードでTTS再生
         if (translationBox) {
             translationBox.addEventListener('click', playTranslation);
@@ -698,6 +707,10 @@ document.addEventListener('DOMContentLoaded', function() {
 5. 専門用語、固有名詞、文化的な言及は正確に保持する。
 6. 出力は自然で会話的にする。
 7. 翻訳のみを出力し、説明は含めない。`;
+
+        // 初期化完了フラグを設定
+        appInitialized = true;
+        console.log('アプリ初期化完了');
     }
     
     // コンテンツリセット機能
