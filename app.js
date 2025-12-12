@@ -196,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const fontSizeLargeBtn = document.getElementById('fontSizeLarge');
     const fontSizeXLargeBtn = document.getElementById('fontSizeXLarge');
     const translationBox = document.getElementById('translationBox');
+    const originalBox = document.getElementById('originalBox');
     const tapHint = document.getElementById('tapHint');
     const fontSizePreview = document.getElementById('fontSizePreview');
     
@@ -472,6 +473,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // 録音状態の視覚的フィードバックを更新
+    function updateRecordingState(isRecordingNow) {
+        if (originalBox) {
+            if (isRecordingNow) {
+                originalBox.classList.add('recording');
+            } else {
+                originalBox.classList.remove('recording');
+            }
+        }
+    }
+
+    // 翻訳状態の視覚的フィードバックを更新
+    function updateTranslatingState(isTranslating) {
+        if (translationBox) {
+            if (isTranslating) {
+                translationBox.classList.add('translating');
+                translationBox.classList.remove('translation-complete');
+            } else {
+                translationBox.classList.remove('translating');
+            }
+        }
+    }
+
+    // 翻訳完了状態の視覚的フィードバックを更新
+    function updateTranslationCompleteState(isComplete) {
+        if (translationBox) {
+            if (isComplete) {
+                translationBox.classList.remove('translating');
+                translationBox.classList.add('translation-complete');
+            } else {
+                translationBox.classList.remove('translation-complete');
+            }
+        }
+    }
+
     // 手動TTS再生関数（再生ボタン用）
     function playTranslation() {
         // iOS Safari対策: ユーザーのタップ時にTTSを初期化
@@ -731,12 +767,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 再生ボタンを無効化
         updateTranslationBoxState(false);
-        
+
+        // 視覚状態をすべてクリア
+        updateRecordingState(false);
+        updateTranslatingState(false);
+        updateTranslationCompleteState(false);
+
         // ステータス表示も更新
         status.textContent = '待機中';
         status.classList.remove('recording', 'processing', 'error');
         status.classList.add('idle');
-        
+
         errorMessage.textContent = '';
         
         console.log('コンテンツリセット完了');
@@ -946,7 +987,11 @@ document.addEventListener('DOMContentLoaded', function() {
         status.textContent = '録音中';
         status.classList.remove('idle', 'error');
         status.classList.add('recording');
-        
+
+        // 録音状態の視覚的フィードバックを更新
+        updateRecordingState(true);
+        updateTranslationCompleteState(false);
+
         // ボタン表示を更新 - 開始ボタンを非表示、停止ボタンを表示
         updateButtonVisibility(true);
         
@@ -969,10 +1014,13 @@ document.addEventListener('DOMContentLoaded', function() {
         status.textContent = '処理中';
         status.classList.remove('recording');
         status.classList.add('processing');
-        
+
+        // 録音状態の視覚的フィードバックを解除
+        updateRecordingState(false);
+
         // TTS停止
         stopTTS();
-        
+
         // ボタン表示を更新 - 開始ボタンを表示、停止ボタンを非表示
         updateButtonVisibility(false);
         
@@ -1014,7 +1062,10 @@ document.addEventListener('DOMContentLoaded', function() {
         translationInProgress = true;
         lastTranslationTime = Date.now();
         translatingIndicator.classList.add('visible');
-        
+
+        // 翻訳中の視覚的フィードバックを更新
+        updateTranslatingState(true);
+
         // エラーメッセージをクリア
         errorMessage.textContent = '';
         
@@ -1115,10 +1166,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 lastTranslationResult = translationResult;
                 // 再生ボタンを有効化
                 updateTranslationBoxState(true);
+                // 翻訳完了の視覚的フィードバック
+                updateTranslationCompleteState(true);
                 console.log('翻訳結果を保存しました。再生ボタンで読み上げ可能です。');
             } else {
                 lastTranslationResult = '';
                 updateTranslationBoxState(false);
+                updateTranslationCompleteState(false);
             }
 
             // 現在のコントローラーをリセット
@@ -1138,6 +1192,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } finally {
             translationInProgress = false;
             translatingIndicator.classList.remove('visible');
+            // 翻訳中の視覚的フィードバックを解除
+            updateTranslatingState(false);
         }
     }
     

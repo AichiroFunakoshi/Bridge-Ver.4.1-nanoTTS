@@ -12,7 +12,7 @@ body {
     min-height: 100vh;
     background-color: #f5f5f7;
     color: #333;
-    padding: 20px;
+    padding: 10px;
     touch-action: manipulation;
 }
 
@@ -21,27 +21,29 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 20px;
+    justify-content: flex-start;
+    gap: 10px;
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 10px;
+    width: 100%;
+    height: 100%;
 }
 
 .app-header {
     text-align: center;
-    margin-bottom: 20px;
-}
-
-.app-title {
-    font-size: 32px;
-    font-weight: 700;
-    color: #1a73e8;
     margin-bottom: 5px;
 }
 
+.app-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a73e8;
+    margin-bottom: 2px;
+}
+
 .app-subtitle {
-    font-size: 14px;
+    font-size: 11px;
     color: #666;
     max-width: 600px;
     margin: 0 auto;
@@ -176,23 +178,25 @@ body {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    margin-top: 20px;
+    gap: 10px;
+    margin-top: 10px;
     flex: 1;
+    min-height: 0;
 }
 
 .result-box {
     background-color: white;
     border-radius: 12px;
-    padding: 25px;
+    padding: 15px;
     width: 100%;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    min-height: 150px;
+    min-height: 100px;
     border-left: 4px solid #1a73e8;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
     flex: 1;
+    transition: all 0.3s ease;
     position: relative;
     margin-bottom: 5px;
 }
@@ -285,11 +289,55 @@ body {
     }
 }
 
+/* ========================================
+   録音中・翻訳中の視覚的状態
+   ======================================== */
+
+/* 録音中（話し中）の原文ボックス */
+.result-box.recording {
+    border-left-color: #1a73e8;
+    background-color: #e3f2fd;
+    animation: recording-pulse 2s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+    0%, 100% {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 0 0 0 rgba(26, 115, 232, 0.4);
+    }
+    50% {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 0 0 8px rgba(26, 115, 232, 0);
+    }
+}
+
+/* 翻訳中の翻訳ボックス */
+.translation-box.translating {
+    border-left-color: #ff9800;
+    background-color: #fff8e1;
+    animation: translating-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes translating-pulse {
+    0%, 100% {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 0 0 0 rgba(255, 152, 0, 0.4);
+    }
+    50% {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 0 0 6px rgba(255, 152, 0, 0);
+    }
+}
+
+/* 翻訳完了の翻訳ボックス */
+.translation-box.translation-complete {
+    border-left-color: #4CAF50;
+    background-color: #f1f8e9;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+}
+
 .app-footer {
     text-align: center;
-    margin-top: 20px;
-    font-size: 12px;
-    color: #666;
+    margin-top: 10px;
+    font-size: 10px;
+    color: #888;
+    padding: 5px 0;
 }
 
 .settings-button {
