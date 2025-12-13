@@ -807,9 +807,9 @@ body {
 }
 
 /* TTS有効かつコンテンツがある場合のみインタラクティブ */
+/* 注意: background-colorは状態別スタイル（translating, translation-complete）と競合するため除外 */
 .translation-box.has-content {
     cursor: pointer;
-    background-color: #fafffe;
 }
 
 .translation-box.has-content:hover {
