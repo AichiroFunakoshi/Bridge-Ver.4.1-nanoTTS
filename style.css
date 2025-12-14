@@ -507,6 +507,16 @@ body {
         font-size: 13px;
     }
 
+    /* モバイルでのアイコンサイズ調整 */
+    .language-button .language-icon {
+        width: 14px;
+        height: 14px;
+    }
+
+    .language-button.reset {
+        padding: 8px 10px;
+    }
+
     .result-container {
         gap: 5px; /* 15px→5px 余白削減 */
     }
@@ -1069,31 +1079,10 @@ body {
     }
 }
 
-/* 縦画面モバイル：ボタンを小さく横並びに */
-@media (max-width: 600px) and (orientation: portrait) {
-    .button-group {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 6px;
-        width: auto;
-        max-width: 100%;
-    }
-
-    .language-button {
-        width: auto;
-        padding: 8px 14px;
-        font-size: 13px;
-    }
-
-    .language-button .language-icon {
-        width: 14px;
-        height: 14px;
-    }
-
-    .language-button.reset {
-        padding: 8px 10px;
-    }
-}
+/*
+ * 注意: 縦画面モバイル用スタイルは @media (max-width: 600px) に統合済み
+ * 横画面は @media (orientation: landscape) で別途定義
+ */
 
 @media (max-width: 480px) {
     .font-size-btn {
@@ -1115,7 +1104,11 @@ body {
     }
 }
 
-/* 小さい画面の縦画面：さらにコンパクトに */
+/*
+ * 小さい画面の縦画面：さらにコンパクトに
+ * 480px以下の縦画面ではボタンとアイコンをさらに縮小
+ * アイコン: 14px → 12px（タイトなレイアウト対応）
+ */
 @media (max-width: 480px) and (orientation: portrait) {
     .language-button {
         padding: 6px 10px;
