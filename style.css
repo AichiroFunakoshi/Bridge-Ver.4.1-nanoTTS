@@ -490,17 +490,31 @@ body {
         font-size: 13px;
     }
 
+    /* ボタンは横並びに変更（縦並びから改善） */
     .button-group {
-        flex-direction: column;
-        gap: 8px; /* 12px→8px 余白削減 */
-        width: 100%;
-        max-width: 280px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: auto;
+        max-width: 100%;
+        justify-content: center;
     }
 
     .language-button {
-        width: 100%;
+        width: auto;
         justify-content: center;
-        padding: 10px 20px; /* 12px 24px→10px 20px 余白削減 */
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+
+    /* モバイルでのアイコンサイズ調整 */
+    .language-button .language-icon {
+        width: 14px;
+        height: 14px;
+    }
+
+    .language-button.reset {
+        padding: 8px 10px;
     }
 
     .result-container {
@@ -515,7 +529,7 @@ body {
     .result-content {
         font-size: 20px;
     }
-    
+
     .result-content.size-small {
         font-size: 16px;
     }
@@ -531,7 +545,7 @@ body {
     .result-content.size-xlarge {
         font-size: 28px;
     }
-    
+
     .modal-content {
         padding: 20px;
         width: 95%;
@@ -939,6 +953,111 @@ body {
     height: 18px;
 }
 
+/* ========================================
+   横画面（ランドスケープ）レイアウト
+   原文と翻訳を左右に並べて表示
+   ======================================== */
+@media (orientation: landscape) {
+    body {
+        padding: 3px;
+    }
+
+    .container {
+        max-width: 100%;
+        gap: 3px;
+    }
+
+    .control-container {
+        flex-direction: row;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 3px;
+    }
+
+    .button-group {
+        flex-direction: row;
+        gap: 6px;
+    }
+
+    .language-button {
+        padding: 6px 12px;
+        font-size: 13px;
+        border-radius: 16px;
+    }
+
+    .language-button .language-icon {
+        width: 14px;
+        height: 14px;
+    }
+
+    .status {
+        font-size: 12px;
+        padding: 3px 10px;
+    }
+
+    /* 翻訳エリアを左右分割 */
+    .result-container {
+        flex-direction: row;
+        gap: 5px;
+    }
+
+    .result-box {
+        flex: 1;
+        min-height: 0;
+        padding: 8px 10px;
+        border-left-width: 3px;
+    }
+
+    .result-title {
+        font-size: 11px;
+        margin-bottom: 3px;
+    }
+
+    .result-content {
+        font-size: 18px;
+        line-height: 1.4;
+    }
+
+    .result-content.size-small {
+        font-size: 14px;
+    }
+
+    .result-content.size-medium {
+        font-size: 18px;
+    }
+
+    .result-content.size-large {
+        font-size: 22px;
+    }
+
+    .result-content.size-xlarge {
+        font-size: 26px;
+    }
+
+    .language-indicator {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+
+    .tap-hint {
+        font-size: 9px;
+        padding: 1px 5px;
+    }
+
+    .settings-button {
+        top: 3px;
+        right: 3px;
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+
+    /* 横画面では翻訳ボックスの上部にボーダーを追加して視覚的に区別 */
+    .translation-box {
+        border-left-color: #4CAF50;
+    }
+}
+
 /* モバイル対応追加 */
 @media (max-width: 600px) {
     .font-size-controls-modal {
@@ -960,6 +1079,11 @@ body {
     }
 }
 
+/*
+ * 注意: 縦画面モバイル用スタイルは @media (max-width: 600px) に統合済み
+ * 横画面は @media (orientation: landscape) で別途定義
+ */
+
 @media (max-width: 480px) {
     .font-size-btn {
         padding: 6px 8px;
@@ -977,5 +1101,22 @@ body {
     .language-button.reset .language-icon {
         width: 16px;
         height: 16px;
+    }
+}
+
+/*
+ * 小さい画面の縦画面：さらにコンパクトに
+ * 480px以下の縦画面ではボタンとアイコンをさらに縮小
+ * アイコン: 14px → 12px（タイトなレイアウト対応）
+ */
+@media (max-width: 480px) and (orientation: portrait) {
+    .language-button {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .language-button .language-icon {
+        width: 12px;
+        height: 12px;
     }
 }
