@@ -235,6 +235,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // パーソナライズドデバウンス最適化用データ
     const DEBOUNCE_SAMPLE_SIZE = 30; // 最適化に必要なサンプル数
+    const DEBOUNCE_MIN_SAMPLES_PER_LANG = 5; // 言語別最小サンプル数
+    const DEBOUNCE_MIN_MS = 100; // デバウンス最小値（ms）
+    const DEBOUNCE_MAX_MS = 800; // デバウンス最大値（ms）
+    const DEBOUNCE_BUFFER_FACTOR = 1.1; // 75パーセンタイルへのバッファ係数
+    const PAUSE_INTERVAL_MIN_MS = 50; // 有効なポーズ間隔の最小値（ms）
+    const PAUSE_INTERVAL_MAX_MS = 2000; // 有効なポーズ間隔の最大値（ms）
+    const TTS_SPEED_MIN = 0.8; // TTS速度最小値
+    const TTS_SPEED_MAX = 1.2; // TTS速度最大値
+    const TTS_SPEED_DEFAULT = 1.0; // TTS速度デフォルト値
     let debounceData = {
         'ja': [], // 日本語のポーズ間隔データ
         'en': []  // 英語のポーズ間隔データ
@@ -562,10 +571,17 @@ document.addEventListener('DOMContentLoaded', function() {
             isTTSEnabled = true;
         }
 
-        // TTS速度を読み込み
+        // TTS速度を読み込み（検証付き）
         const storedTTSSpeed = localStorage.getItem('translatorTTSSpeed');
         if (storedTTSSpeed !== null) {
-            ttsSpeed = parseFloat(storedTTSSpeed);
+            const parsedSpeed = parseFloat(storedTTSSpeed);
+            // NaNまたは範囲外の場合はデフォルト値を使用
+            if (isNaN(parsedSpeed) || parsedSpeed < TTS_SPEED_MIN || parsedSpeed > TTS_SPEED_MAX) {
+                ttsSpeed = TTS_SPEED_DEFAULT;
+                localStorage.setItem('translatorTTSSpeed', TTS_SPEED_DEFAULT.toString());
+            } else {
+                ttsSpeed = parsedSpeed;
+            }
         }
         updateSpeedButtonsUI(ttsSpeed);
 
@@ -668,7 +684,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // デバウンス最適化計算
     function calculateOptimalDebounce(language) {
         const data = debounceData[language];
-        if (data.length < 5) {
+        if (data.length < DEBOUNCE_MIN_SAMPLES_PER_LANG) {
             return DEFAULT_DEBOUNCE[language]; // データ不足時はデフォルト
         }
 
@@ -677,14 +693,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const percentileIndex = Math.floor(sorted.length * 0.75);
         const percentile75 = sorted[percentileIndex];
 
-        // 最小値と最大値を設定（安全範囲）
-        const minDebounce = 100;
-        const maxDebounce = 800;
+        // 75パーセンタイルにバッファを追加し、安全範囲内に収める
+        const optimal = Math.round(percentile75 * DEBOUNCE_BUFFER_FACTOR);
 
-        // 75パーセンタイルに小さなバッファを追加
-        const optimal = Math.round(percentile75 * 1.1);
-
-        return Math.max(minDebounce, Math.min(maxDebounce, optimal));
+        return Math.max(DEBOUNCE_MIN_MS, Math.min(DEBOUNCE_MAX_MS, optimal));
     }
 
     // ポーズ間隔データを記録
@@ -692,10 +704,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const now = Date.now();
         if (lastSpeechEndTime > 0) {
             const pauseInterval = now - lastSpeechEndTime;
-            // 有効な範囲のデータのみ記録（50ms〜2000ms）
-            if (pauseInterval >= 50 && pauseInterval <= 2000) {
+            // 有効な範囲のデータのみ記録（極端に短いまたは長い間隔を除外）
+            if (pauseInterval >= PAUSE_INTERVAL_MIN_MS && pauseInterval <= PAUSE_INTERVAL_MAX_MS) {
                 debounceData[language].push(pauseInterval);
-                // ローリングウィンドウ: 最新30件のみ保持
+                // ローリングウィンドウ: 最新サンプルのみ保持
                 if (debounceData[language].length > DEBOUNCE_SAMPLE_SIZE) {
                     debounceData[language].shift();
                 }
