@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentSpeechUtterance = null; // 現在再生中の音声
     let isTTSPlaying = false; // TTS再生中フラグ
     let ttsInitialized = false; // iOS Safari用: TTS初期化済みフラグ
+    let ttsSpeed = 1.0; // TTS再生速度（デフォルト: 1.0）
     
     // DOM要素
     const startJapaneseBtn = document.getElementById('startJapaneseBtn');
@@ -220,15 +221,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // アプリ初期化フラグ（イベントリスナー重複登録防止）
     let appInitialized = false;
 
-    // 言語別最適デバウンス設定（科学的アプローチに基づく）
-    const OPTIMAL_DEBOUNCE = {
+    // 言語別デフォルトデバウンス設定（科学的アプローチに基づく）
+    const DEFAULT_DEBOUNCE = {
         'ja': 346,  // 日本語最適値（文節区切り対応・31%改善）
         'en': 154   // 英語最適値（流暢性追従・69%改善）
     };
 
+    // 現在のデバウンス設定（パーソナライズ可能）
+    let currentDebounce = {
+        'ja': DEFAULT_DEBOUNCE['ja'],
+        'en': DEFAULT_DEBOUNCE['en']
+    };
+
+    // パーソナライズドデバウンス最適化用データ
+    const DEBOUNCE_SAMPLE_SIZE = 30; // 最適化に必要なサンプル数
+    let debounceData = {
+        'ja': [], // 日本語のポーズ間隔データ
+        'en': []  // 英語のポーズ間隔データ
+    };
+    let lastSpeechEndTime = 0; // 最後の音声終了時刻
+    let isDebounceOptimized = false; // 最適化済みフラグ
+
     // 動的デバウンス取得関数
     const getOptimalDebounce = (selectedLanguage) => {
-        return OPTIMAL_DEBOUNCE[selectedLanguage] || 300; // デフォルト値
+        return currentDebounce[selectedLanguage] || 300; // デフォルト値
     };
 
     // 日本語文字起こしの整形に使用する変数と関数
@@ -360,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // 音声設定
-        utterance.rate = 1.0;    // 通常速度
+        utterance.rate = ttsSpeed;  // ユーザー設定の速度を適用
         utterance.pitch = 1.0;   // 通常ピッチ
         utterance.volume = 1.0;  // 最大音量
 
@@ -546,8 +562,19 @@ document.addEventListener('DOMContentLoaded', function() {
             isTTSEnabled = true;
         }
 
+        // TTS速度を読み込み
+        const storedTTSSpeed = localStorage.getItem('translatorTTSSpeed');
+        if (storedTTSSpeed !== null) {
+            ttsSpeed = parseFloat(storedTTSSpeed);
+        }
+        updateSpeedButtonsUI(ttsSpeed);
+
+        // デバウンスデータを読み込み
+        loadDebounceData();
+
         console.log('TTS設定読み込み:', {
             isTTSEnabled: isTTSEnabled,
+            ttsSpeed: ttsSpeed,
             storedValue: storedTTSEnabled
         });
 
@@ -557,6 +584,126 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             initializeApp();
         }
+    }
+
+    // デバウンスデータの読み込み
+    function loadDebounceData() {
+        try {
+            // デバウンスデータ
+            const storedDebounceData = localStorage.getItem('translatorDebounceData');
+            if (storedDebounceData) {
+                debounceData = JSON.parse(storedDebounceData);
+            }
+
+            // 最適化されたデバウンス値
+            const storedOptimizedDebounce = localStorage.getItem('translatorOptimizedDebounce');
+            if (storedOptimizedDebounce) {
+                const optimized = JSON.parse(storedOptimizedDebounce);
+                currentDebounce['ja'] = optimized['ja'] || DEFAULT_DEBOUNCE['ja'];
+                currentDebounce['en'] = optimized['en'] || DEFAULT_DEBOUNCE['en'];
+                isDebounceOptimized = true;
+            }
+
+            // UI更新
+            updateDebounceUI();
+        } catch (e) {
+            console.error('デバウンスデータ読み込みエラー:', e);
+        }
+    }
+
+    // デバウンスデータの保存
+    function saveDebounceData() {
+        try {
+            localStorage.setItem('translatorDebounceData', JSON.stringify(debounceData));
+        } catch (e) {
+            console.error('デバウンスデータ保存エラー:', e);
+        }
+    }
+
+    // デバウンスUI更新
+    function updateDebounceUI() {
+        const jaValueEl = document.getElementById('debounceJaValue');
+        const enValueEl = document.getElementById('debounceEnValue');
+        const jaTypeEl = document.getElementById('debounceJaType');
+        const enTypeEl = document.getElementById('debounceEnType');
+        const progressFill = document.getElementById('debounceProgressFill');
+        const progressText = document.getElementById('debounceProgressText');
+        const optimizeBtn = document.getElementById('optimizeDebounceBtn');
+
+        if (jaValueEl) jaValueEl.textContent = `${currentDebounce['ja']}ms`;
+        if (enValueEl) enValueEl.textContent = `${currentDebounce['en']}ms`;
+
+        if (jaTypeEl) {
+            jaTypeEl.textContent = isDebounceOptimized ? '(最適化済み)' : '(デフォルト)';
+            jaTypeEl.className = isDebounceOptimized ? 'debounce-type optimized' : 'debounce-type';
+        }
+        if (enTypeEl) {
+            enTypeEl.textContent = isDebounceOptimized ? '(最適化済み)' : '(デフォルト)';
+            enTypeEl.className = isDebounceOptimized ? 'debounce-type optimized' : 'debounce-type';
+        }
+
+        // プログレスバー更新
+        const totalSamples = debounceData['ja'].length + debounceData['en'].length;
+        const progress = Math.min((totalSamples / DEBOUNCE_SAMPLE_SIZE) * 100, 100);
+        if (progressFill) progressFill.style.width = `${progress}%`;
+        if (progressText) progressText.textContent = `データ収集: ${totalSamples}/${DEBOUNCE_SAMPLE_SIZE}件`;
+
+        // 最適化ボタンの有効/無効
+        if (optimizeBtn) {
+            optimizeBtn.disabled = totalSamples < DEBOUNCE_SAMPLE_SIZE;
+        }
+    }
+
+    // TTS速度ボタンUI更新
+    function updateSpeedButtonsUI(speed) {
+        const speedBtns = document.querySelectorAll('.speed-btn');
+        speedBtns.forEach(btn => {
+            btn.classList.remove('active');
+            if (parseFloat(btn.dataset.speed) === speed) {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    // デバウンス最適化計算
+    function calculateOptimalDebounce(language) {
+        const data = debounceData[language];
+        if (data.length < 5) {
+            return DEFAULT_DEBOUNCE[language]; // データ不足時はデフォルト
+        }
+
+        // ソートして75パーセンタイルを計算（外れ値に強い）
+        const sorted = [...data].sort((a, b) => a - b);
+        const percentileIndex = Math.floor(sorted.length * 0.75);
+        const percentile75 = sorted[percentileIndex];
+
+        // 最小値と最大値を設定（安全範囲）
+        const minDebounce = 100;
+        const maxDebounce = 800;
+
+        // 75パーセンタイルに小さなバッファを追加
+        const optimal = Math.round(percentile75 * 1.1);
+
+        return Math.max(minDebounce, Math.min(maxDebounce, optimal));
+    }
+
+    // ポーズ間隔データを記録
+    function recordPauseInterval(language) {
+        const now = Date.now();
+        if (lastSpeechEndTime > 0) {
+            const pauseInterval = now - lastSpeechEndTime;
+            // 有効な範囲のデータのみ記録（50ms〜2000ms）
+            if (pauseInterval >= 50 && pauseInterval <= 2000) {
+                debounceData[language].push(pauseInterval);
+                // ローリングウィンドウ: 最新30件のみ保持
+                if (debounceData[language].length > DEBOUNCE_SAMPLE_SIZE) {
+                    debounceData[language].shift();
+                }
+                saveDebounceData();
+                updateDebounceUI();
+            }
+        }
+        lastSpeechEndTime = now;
     }
     
     // APIキー保存
@@ -616,6 +763,63 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('TTS設定変更:', isTTSEnabled ? '有効' : '無効');
             // TTS設定変更時に再生ボタンの状態を更新
             updateTranslationBoxState(!!lastTranslationResult);
+        });
+    }
+
+    // TTS速度ボタンの設定
+    const speedBtns = document.querySelectorAll('.speed-btn');
+    speedBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const speed = parseFloat(btn.dataset.speed);
+            ttsSpeed = speed;
+            localStorage.setItem('translatorTTSSpeed', speed.toString());
+            updateSpeedButtonsUI(speed);
+            console.log('TTS速度変更:', speed);
+        });
+    });
+
+    // デバウンス最適化ボタン
+    const optimizeDebounceBtn = document.getElementById('optimizeDebounceBtn');
+    if (optimizeDebounceBtn) {
+        optimizeDebounceBtn.addEventListener('click', () => {
+            // 最適化計算を実行
+            const optimizedJa = calculateOptimalDebounce('ja');
+            const optimizedEn = calculateOptimalDebounce('en');
+
+            currentDebounce['ja'] = optimizedJa;
+            currentDebounce['en'] = optimizedEn;
+            isDebounceOptimized = true;
+
+            // 保存
+            localStorage.setItem('translatorOptimizedDebounce', JSON.stringify(currentDebounce));
+
+            // UI更新
+            updateDebounceUI();
+
+            console.log('デバウンス最適化完了:', {
+                ja: optimizedJa,
+                en: optimizedEn
+            });
+
+            alert(`デバウンス最適化が完了しました！\n\n日本語: ${optimizedJa}ms\n英語: ${optimizedEn}ms`);
+        });
+    }
+
+    // デバウンスリセットボタン
+    const resetDebounceBtn = document.getElementById('resetDebounceBtn');
+    if (resetDebounceBtn) {
+        resetDebounceBtn.addEventListener('click', () => {
+            if (confirm('デバウンス設定をデフォルトに戻しますか？\n収集したデータは保持されます。')) {
+                currentDebounce['ja'] = DEFAULT_DEBOUNCE['ja'];
+                currentDebounce['en'] = DEFAULT_DEBOUNCE['en'];
+                isDebounceOptimized = false;
+
+                localStorage.removeItem('translatorOptimizedDebounce');
+
+                updateDebounceUI();
+
+                console.log('デバウンス設定をデフォルトにリセット');
+            }
         });
     }
 
@@ -845,7 +1049,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!processedResultIds.has(resultId)) {
                         processedResultIds.add(resultId);
                         hasNewContent = true;
-                        
+
+                        // デバウンス最適化用: ポーズ間隔を記録
+                        recordPauseInterval(selectedLanguage);
+
                         // 日本語入力の場合、文章を整形
                         if (selectedLanguage === 'ja') {
                             finalText += japaneseFormatter.format(transcript) + ' ';

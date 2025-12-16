@@ -941,6 +941,147 @@ body {
 }
 
 /* ========================================
+   TTS速度コントロール
+   ======================================== */
+.speed-controls {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.speed-btn {
+    flex: 1;
+    padding: 8px 6px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: white;
+    color: #333;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.speed-btn:hover {
+    border-color: #4CAF50;
+    color: #4CAF50;
+}
+
+.speed-btn.active {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+}
+
+/* ========================================
+   デバウンス最適化UI
+   ======================================== */
+.debounce-optimizer {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.debounce-status {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 12px;
+}
+
+.debounce-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.debounce-label {
+    font-size: 13px;
+    color: #666;
+}
+
+.debounce-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a73e8;
+}
+
+.debounce-type {
+    font-size: 11px;
+    color: #888;
+}
+
+.debounce-type.optimized {
+    color: #4CAF50;
+}
+
+.debounce-progress {
+    margin-bottom: 12px;
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1a73e8, #4CAF50);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 12px;
+    color: #666;
+}
+
+.debounce-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.debounce-btn {
+    flex: 1;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.debounce-btn.optimize {
+    background-color: #1a73e8;
+    color: white;
+}
+
+.debounce-btn.optimize:hover:not(:disabled) {
+    background-color: #1557b0;
+}
+
+.debounce-btn.optimize:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.debounce-btn.reset {
+    background-color: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.debounce-btn.reset:hover {
+    background-color: #e8e8e8;
+}
+
+/* ========================================
    リセットボタン調整（小さく）
    ======================================== */
 .language-button.reset {

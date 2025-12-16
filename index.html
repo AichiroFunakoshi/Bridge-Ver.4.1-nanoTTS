@@ -136,6 +136,18 @@
             </div>
 
             <div class="form-group">
+                <label class="form-label">読み上げ速度</label>
+                <div class="speed-controls">
+                    <button class="speed-btn" data-speed="0.8">×0.8</button>
+                    <button class="speed-btn" data-speed="0.9">×0.9</button>
+                    <button class="speed-btn active" data-speed="1.0">×1.0</button>
+                    <button class="speed-btn" data-speed="1.1">×1.1</button>
+                    <button class="speed-btn" data-speed="1.2">×1.2</button>
+                </div>
+                <div class="form-help">音声読み上げのスピードを調整できます</div>
+            </div>
+
+            <div class="form-group">
                 <label class="form-label">文字サイズ</label>
                 <div class="font-size-preview" id="fontSizePreview">
                     <span class="preview-text">あ / A</span>
@@ -146,6 +158,33 @@
                     <button class="font-size-btn" id="fontSizeLarge">大</button>
                     <button class="font-size-btn" id="fontSizeXLarge">特大</button>
                 </div>
+            </div>
+
+            <div class="form-group debounce-optimizer">
+                <label class="form-label">デバウンス最適化</label>
+                <div class="debounce-status">
+                    <div class="debounce-info">
+                        <span class="debounce-label">日本語:</span>
+                        <span class="debounce-value" id="debounceJaValue">346ms</span>
+                        <span class="debounce-type" id="debounceJaType">(デフォルト)</span>
+                    </div>
+                    <div class="debounce-info">
+                        <span class="debounce-label">英語:</span>
+                        <span class="debounce-value" id="debounceEnValue">154ms</span>
+                        <span class="debounce-type" id="debounceEnType">(デフォルト)</span>
+                    </div>
+                </div>
+                <div class="debounce-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="debounceProgressFill" style="width: 0%"></div>
+                    </div>
+                    <span class="progress-text" id="debounceProgressText">データ収集: 0/30件</span>
+                </div>
+                <div class="debounce-buttons">
+                    <button class="debounce-btn optimize" id="optimizeDebounceBtn" disabled>最適化を実行</button>
+                    <button class="debounce-btn reset" id="resetDebounceBtn">デフォルトに戻す</button>
+                </div>
+                <div class="form-help">使用パターンから最適なデバウンス値を学習します（30件のデータが必要）</div>
             </div>
 
             <div class="button-row">
