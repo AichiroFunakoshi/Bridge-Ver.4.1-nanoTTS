@@ -941,6 +941,235 @@ body {
 }
 
 /* ========================================
+   TTS速度コントロール
+   ======================================== */
+.speed-controls {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.speed-btn {
+    flex: 1;
+    padding: 8px 6px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: white;
+    color: #333;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.speed-btn:hover {
+    border-color: #4CAF50;
+    color: #4CAF50;
+}
+
+.speed-btn.active {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+}
+
+.speed-btn:focus-visible {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+}
+
+/* ========================================
+   デバウンス最適化UI
+   ======================================== */
+.debounce-optimizer {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.debounce-status {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 12px;
+}
+
+.debounce-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.debounce-label {
+    font-size: 13px;
+    color: #666;
+}
+
+.debounce-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a73e8;
+}
+
+.debounce-type {
+    font-size: 11px;
+    color: #888;
+}
+
+.debounce-type.optimized {
+    color: #4CAF50;
+}
+
+.debounce-progress {
+    margin-bottom: 12px;
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1a73e8, #4CAF50);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 12px;
+    color: #666;
+}
+
+.debounce-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.debounce-btn {
+    flex: 1;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.debounce-btn:focus-visible {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+}
+
+.debounce-btn.optimize {
+    background-color: #1a73e8;
+    color: white;
+}
+
+.debounce-btn.optimize:hover:not(:disabled) {
+    background-color: #1557b0;
+}
+
+.debounce-btn.optimize:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.debounce-btn.reset {
+    background-color: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.debounce-btn.reset:hover {
+    background-color: #e8e8e8;
+}
+
+.debounce-btn.full-reset {
+    background-color: #fff0f0;
+    color: #d32f2f;
+    border: 1px solid #ffcdd2;
+}
+
+.debounce-btn.full-reset:hover {
+    background-color: #ffebee;
+    border-color: #ef9a9a;
+}
+
+.debounce-btn.optimize.disabled {
+    background-color: #e0e0e0;
+    color: #9e9e9e;
+    cursor: not-allowed;
+}
+
+.debounce-btn.optimize.ready {
+    background-color: #4CAF50;
+    color: white;
+    animation: pulse-ready 2s infinite;
+}
+
+.debounce-btn.optimize.ready:hover {
+    background-color: #388E3C;
+}
+
+@keyframes pulse-ready {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
+}
+
+/* 最適化日時表示 */
+.debounce-optimized-at {
+    font-size: 11px;
+    color: #4CAF50;
+    text-align: center;
+    margin: 8px 0;
+    padding: 4px 8px;
+    background-color: #e8f5e9;
+    border-radius: 4px;
+}
+
+/* 残りサンプル数表示 */
+.remaining-info {
+    font-size: 12px;
+    color: #f57c00;
+    text-align: center;
+    margin: 8px 0;
+    padding: 6px 10px;
+    background-color: #fff3e0;
+    border-radius: 4px;
+}
+
+.remaining-info.ready {
+    color: #4CAF50;
+    background-color: #e8f5e9;
+}
+
+/* フッターリンク */
+.footer-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 5px;
+}
+
+.footer-link {
+    color: #1a73e8;
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.footer-link:hover {
+    text-decoration: underline;
+}
+
+/* ========================================
    リセットボタン調整（小さく）
    ======================================== */
 .language-button.reset {

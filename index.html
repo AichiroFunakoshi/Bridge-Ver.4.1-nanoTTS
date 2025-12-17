@@ -106,7 +106,10 @@
         
         <div class="app-footer">
             Bridge(Ver.4.1-nano) デバウンス最適化版 © 2025 ┃ Crafted by A_1_6
-            <div class="reset-keys" id="resetKeys">APIキーリセット</div>
+            <div class="footer-links">
+                <a href="howto.html" class="footer-link">使い方</a>
+                <span class="reset-keys" id="resetKeys">APIキーリセット</span>
+            </div>
         </div>
     </div>
     
@@ -136,6 +139,18 @@
             </div>
 
             <div class="form-group">
+                <label class="form-label">読み上げ速度</label>
+                <div class="speed-controls">
+                    <button class="speed-btn" data-speed="0.8">×0.8</button>
+                    <button class="speed-btn" data-speed="0.9">×0.9</button>
+                    <button class="speed-btn active" data-speed="1.0">×1.0</button>
+                    <button class="speed-btn" data-speed="1.1">×1.1</button>
+                    <button class="speed-btn" data-speed="1.2">×1.2</button>
+                </div>
+                <div class="form-help">音声読み上げのスピードを調整できます</div>
+            </div>
+
+            <div class="form-group">
                 <label class="form-label">文字サイズ</label>
                 <div class="font-size-preview" id="fontSizePreview">
                     <span class="preview-text">あ / A</span>
@@ -146,6 +161,36 @@
                     <button class="font-size-btn" id="fontSizeLarge">大</button>
                     <button class="font-size-btn" id="fontSizeXLarge">特大</button>
                 </div>
+            </div>
+
+            <div class="form-group debounce-optimizer">
+                <label class="form-label">デバウンス最適化</label>
+                <div class="debounce-status">
+                    <div class="debounce-info">
+                        <span class="debounce-label">日本語:</span>
+                        <span class="debounce-value" id="debounceJaValue">--</span>
+                        <span class="debounce-type" id="debounceJaType">(デフォルト)</span>
+                    </div>
+                    <div class="debounce-info">
+                        <span class="debounce-label">英語:</span>
+                        <span class="debounce-value" id="debounceEnValue">--</span>
+                        <span class="debounce-type" id="debounceEnType">(デフォルト)</span>
+                    </div>
+                </div>
+                <div class="debounce-optimized-at" id="debounceOptimizedAt" style="display: none;"></div>
+                <div class="debounce-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="debounceProgressFill" style="width: 0%"></div>
+                    </div>
+                    <span class="progress-text" id="debounceProgressText">データ収集: 0/50件</span>
+                </div>
+                <div class="remaining-info" id="debounceRemainingInfo"></div>
+                <div class="debounce-buttons">
+                    <button class="debounce-btn optimize disabled" id="optimizeDebounceBtn" disabled>最適化を実行</button>
+                    <button class="debounce-btn reset" id="resetDebounceBtn">設定をリセット</button>
+                    <button class="debounce-btn full-reset" id="fullResetDebounceBtn">完全リセット</button>
+                </div>
+                <div class="form-help">使用パターンから最適なデバウンス値を学習します（各言語で最低15件、合計50件のデータが必要）</div>
             </div>
 
             <div class="button-row">
