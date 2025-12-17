@@ -974,6 +974,11 @@ body {
     color: white;
 }
 
+.speed-btn:focus-visible {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+}
+
 /* ========================================
    デバウンス最適化UI
    ======================================== */
@@ -1055,6 +1060,11 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.debounce-btn:focus-visible {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
 }
 
 .debounce-btn.optimize {

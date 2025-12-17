@@ -251,6 +251,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastSpeechEndTime = 0; // 最後の音声終了時刻
     let isDebounceOptimized = false; // 最適化済みフラグ
     let debounceOptimizedAt = null; // 最適化実行日時
+    let debounceDataSaveTimer = null; // データ保存用デバウンスタイマー
+    const DEBOUNCE_DATA_SAVE_DELAY = 2000; // データ保存のデバウンス遅延（ms）
 
     // 動的デバウンス取得関数
     const getOptimalDebounce = (selectedLanguage) => {
@@ -788,8 +790,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (debounceData[language].length > DEBOUNCE_SAMPLE_SIZE) {
                     debounceData[language].shift();
                 }
-                saveDebounceData();
-                updateDebounceUI();
+                // 保存とUI更新をデバウンス（連続呼び出し時の負荷軽減）
+                if (debounceDataSaveTimer) {
+                    clearTimeout(debounceDataSaveTimer);
+                }
+                debounceDataSaveTimer = setTimeout(() => {
+                    saveDebounceData();
+                    updateDebounceUI();
+                    debounceDataSaveTimer = null;
+                }, DEBOUNCE_DATA_SAVE_DELAY);
             }
         }
         lastSpeechEndTime = now;
