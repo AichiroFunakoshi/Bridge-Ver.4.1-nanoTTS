@@ -234,8 +234,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // パーソナライズドデバウンス最適化用データ
-    const DEBOUNCE_SAMPLE_SIZE = 30; // 最適化に必要なサンプル数
-    const DEBOUNCE_MIN_SAMPLES_PER_LANG = 5; // 言語別最小サンプル数
+    const DEBOUNCE_SAMPLE_SIZE = 50; // 最適化に必要な合計サンプル数（95%信頼区間に基づく）
+    const DEBOUNCE_MIN_SAMPLES_PER_LANG = 15; // 言語別最小サンプル数（分散考慮）
     const DEBOUNCE_MIN_MS = 100; // デバウンス最小値（ms）
     const DEBOUNCE_MAX_MS = 800; // デバウンス最大値（ms）
     const DEBOUNCE_BUFFER_FACTOR = 1.1; // 75パーセンタイルへのバッファ係数
@@ -250,6 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     let lastSpeechEndTime = 0; // 最後の音声終了時刻
     let isDebounceOptimized = false; // 最適化済みフラグ
+    let debounceOptimizedAt = null; // 最適化実行日時
 
     // 動的デバウンス取得関数
     const getOptimalDebounce = (selectedLanguage) => {
@@ -644,6 +645,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
+            // 最適化日時を読み込み
+            const storedOptimizedAt = localStorage.getItem('translatorDebounceOptimizedAt');
+            if (storedOptimizedAt) {
+                debounceOptimizedAt = storedOptimizedAt;
+            }
+
             // UI更新
             updateDebounceUI();
         } catch (e) {
@@ -674,6 +681,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const progressFill = document.getElementById('debounceProgressFill');
         const progressText = document.getElementById('debounceProgressText');
         const optimizeBtn = document.getElementById('optimizeDebounceBtn');
+        const optimizedAtEl = document.getElementById('debounceOptimizedAt');
+        const remainingInfoEl = document.getElementById('debounceRemainingInfo');
 
         if (jaValueEl) jaValueEl.textContent = `${currentDebounce['ja']}ms`;
         if (enValueEl) enValueEl.textContent = `${currentDebounce['en']}ms`;
@@ -687,6 +696,16 @@ document.addEventListener('DOMContentLoaded', function() {
             enTypeEl.className = isDebounceOptimized ? 'debounce-type optimized' : 'debounce-type';
         }
 
+        // 最適化日時の表示
+        if (optimizedAtEl) {
+            if (debounceOptimizedAt) {
+                optimizedAtEl.textContent = `最終最適化: ${debounceOptimizedAt}`;
+                optimizedAtEl.style.display = 'block';
+            } else {
+                optimizedAtEl.style.display = 'none';
+            }
+        }
+
         // プログレスバー更新
         const jaSamples = debounceData['ja'].length;
         const enSamples = debounceData['en'].length;
@@ -695,11 +714,36 @@ document.addEventListener('DOMContentLoaded', function() {
         if (progressFill) progressFill.style.width = `${progress}%`;
         if (progressText) progressText.textContent = `データ収集: ${totalSamples}/${DEBOUNCE_SAMPLE_SIZE}件 (日:${jaSamples} 英:${enSamples})`;
 
-        // 最適化ボタンの有効/無効（合計30件かつ各言語最低5件必要）
+        // 残りサンプル数の詳細表示
+        const jaRemaining = Math.max(0, DEBOUNCE_MIN_SAMPLES_PER_LANG - jaSamples);
+        const enRemaining = Math.max(0, DEBOUNCE_MIN_SAMPLES_PER_LANG - enSamples);
+        const totalRemaining = Math.max(0, DEBOUNCE_SAMPLE_SIZE - totalSamples);
+
+        if (remainingInfoEl) {
+            if (totalRemaining > 0 || jaRemaining > 0 || enRemaining > 0) {
+                let remainingText = '必要残り: ';
+                const parts = [];
+                if (jaRemaining > 0) parts.push(`日本語${jaRemaining}件`);
+                if (enRemaining > 0) parts.push(`英語${enRemaining}件`);
+                if (totalRemaining > 0 && jaRemaining === 0 && enRemaining === 0) {
+                    parts.push(`合計${totalRemaining}件`);
+                }
+                remainingInfoEl.textContent = remainingText + parts.join('、');
+                remainingInfoEl.style.display = 'block';
+            } else {
+                remainingInfoEl.textContent = '✓ 最適化可能です';
+                remainingInfoEl.style.display = 'block';
+                remainingInfoEl.className = 'remaining-info ready';
+            }
+        }
+
+        // 最適化ボタンの有効/無効（合計50件かつ各言語最低15件必要）
         if (optimizeBtn) {
             const hasEnoughTotal = totalSamples >= DEBOUNCE_SAMPLE_SIZE;
             const hasEnoughPerLang = jaSamples >= DEBOUNCE_MIN_SAMPLES_PER_LANG && enSamples >= DEBOUNCE_MIN_SAMPLES_PER_LANG;
-            optimizeBtn.disabled = !(hasEnoughTotal && hasEnoughPerLang);
+            const canOptimize = hasEnoughTotal && hasEnoughPerLang;
+            optimizeBtn.disabled = !canOptimize;
+            optimizeBtn.className = canOptimize ? 'debounce-btn optimize ready' : 'debounce-btn optimize disabled';
         }
     }
 
@@ -816,6 +860,11 @@ document.addEventListener('DOMContentLoaded', function() {
     speedBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const speed = parseFloat(btn.dataset.speed);
+            // data-speed属性の検証（NaNまたは範囲外の場合はデフォルト値を使用）
+            if (isNaN(speed) || speed < TTS_SPEED_MIN || speed > TTS_SPEED_MAX) {
+                console.warn('無効なTTS速度値:', btn.dataset.speed);
+                return;
+            }
             ttsSpeed = speed;
             localStorage.setItem('translatorTTSSpeed', speed.toString());
             updateSpeedButtonsUI(speed);
@@ -835,22 +884,34 @@ document.addEventListener('DOMContentLoaded', function() {
             currentDebounce['en'] = optimizedEn;
             isDebounceOptimized = true;
 
+            // 最適化日時を記録
+            const now = new Date();
+            debounceOptimizedAt = now.toLocaleString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
             // 保存
             localStorage.setItem('translatorOptimizedDebounce', JSON.stringify(currentDebounce));
+            localStorage.setItem('translatorDebounceOptimizedAt', debounceOptimizedAt);
 
             // UI更新
             updateDebounceUI();
 
             console.log('デバウンス最適化完了:', {
                 ja: optimizedJa,
-                en: optimizedEn
+                en: optimizedEn,
+                optimizedAt: debounceOptimizedAt
             });
 
-            alert(`デバウンス最適化が完了しました！\n\n日本語: ${optimizedJa}ms\n英語: ${optimizedEn}ms`);
+            alert(`デバウンス最適化が完了しました！\n\n日本語: ${optimizedJa}ms\n英語: ${optimizedEn}ms\n\n最適化日時: ${debounceOptimizedAt}`);
         });
     }
 
-    // デバウンスリセットボタン
+    // デバウンスリセットボタン（設定のみリセット、データは保持）
     const resetDebounceBtn = document.getElementById('resetDebounceBtn');
     if (resetDebounceBtn) {
         resetDebounceBtn.addEventListener('click', () => {
@@ -858,12 +919,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentDebounce['ja'] = DEFAULT_DEBOUNCE['ja'];
                 currentDebounce['en'] = DEFAULT_DEBOUNCE['en'];
                 isDebounceOptimized = false;
+                debounceOptimizedAt = null;
 
                 localStorage.removeItem('translatorOptimizedDebounce');
+                localStorage.removeItem('translatorDebounceOptimizedAt');
 
                 updateDebounceUI();
 
                 console.log('デバウンス設定をデフォルトにリセット');
+            }
+        });
+    }
+
+    // デバウンス完全リセットボタン（設定とデータの両方をリセット）
+    const fullResetDebounceBtn = document.getElementById('fullResetDebounceBtn');
+    if (fullResetDebounceBtn) {
+        fullResetDebounceBtn.addEventListener('click', () => {
+            if (confirm('デバウンス設定と収集データを完全にリセットしますか？\n\n⚠️ この操作は取り消せません。\n収集した全てのデータが削除されます。')) {
+                // 設定をリセット
+                currentDebounce['ja'] = DEFAULT_DEBOUNCE['ja'];
+                currentDebounce['en'] = DEFAULT_DEBOUNCE['en'];
+                isDebounceOptimized = false;
+                debounceOptimizedAt = null;
+
+                // データをリセット
+                debounceData = { 'ja': [], 'en': [] };
+                lastSpeechEndTime = 0;
+
+                // ストレージをクリア
+                localStorage.removeItem('translatorOptimizedDebounce');
+                localStorage.removeItem('translatorDebounceOptimizedAt');
+                localStorage.removeItem('translatorDebounceData');
+
+                updateDebounceUI();
+
+                console.log('デバウンス設定とデータを完全リセット');
+                alert('デバウンス設定とデータを完全にリセットしました。');
             }
         });
     }
