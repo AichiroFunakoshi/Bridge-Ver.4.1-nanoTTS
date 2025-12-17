@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 動的デバウンス取得関数
     const getOptimalDebounce = (selectedLanguage) => {
-        return currentDebounce[selectedLanguage] || 300; // デフォルト値
+        return currentDebounce[selectedLanguage] || DEFAULT_DEBOUNCE[selectedLanguage] || DEFAULT_DEBOUNCE['ja'];
     };
 
     // 日本語文字起こしの整形に使用する変数と関数
@@ -608,22 +608,51 @@ document.addEventListener('DOMContentLoaded', function() {
             // デバウンスデータ
             const storedDebounceData = localStorage.getItem('translatorDebounceData');
             if (storedDebounceData) {
-                debounceData = JSON.parse(storedDebounceData);
+                const parsed = JSON.parse(storedDebounceData);
+                // 型と構造の検証
+                if (parsed && typeof parsed === 'object') {
+                    // 各言語のデータを検証してフィルタリング
+                    ['ja', 'en'].forEach(lang => {
+                        if (Array.isArray(parsed[lang])) {
+                            // 有効な数値のみ保持（範囲チェック付き）
+                            debounceData[lang] = parsed[lang].filter(
+                                val => typeof val === 'number' &&
+                                       !isNaN(val) &&
+                                       val >= PAUSE_INTERVAL_MIN_MS &&
+                                       val <= PAUSE_INTERVAL_MAX_MS
+                            );
+                        }
+                    });
+                }
             }
 
             // 最適化されたデバウンス値
             const storedOptimizedDebounce = localStorage.getItem('translatorOptimizedDebounce');
             if (storedOptimizedDebounce) {
                 const optimized = JSON.parse(storedOptimizedDebounce);
-                currentDebounce['ja'] = optimized['ja'] || DEFAULT_DEBOUNCE['ja'];
-                currentDebounce['en'] = optimized['en'] || DEFAULT_DEBOUNCE['en'];
-                isDebounceOptimized = true;
+                // 型と範囲の検証
+                if (optimized && typeof optimized === 'object') {
+                    ['ja', 'en'].forEach(lang => {
+                        const val = optimized[lang];
+                        if (typeof val === 'number' && !isNaN(val) && val >= DEBOUNCE_MIN_MS && val <= DEBOUNCE_MAX_MS) {
+                            currentDebounce[lang] = val;
+                        } else {
+                            currentDebounce[lang] = DEFAULT_DEBOUNCE[lang];
+                        }
+                    });
+                    isDebounceOptimized = true;
+                }
             }
 
             // UI更新
             updateDebounceUI();
         } catch (e) {
             console.error('デバウンスデータ読み込みエラー:', e);
+            // エラー時はデフォルト値にリセット
+            debounceData = { 'ja': [], 'en': [] };
+            currentDebounce['ja'] = DEFAULT_DEBOUNCE['ja'];
+            currentDebounce['en'] = DEFAULT_DEBOUNCE['en'];
+            isDebounceOptimized = false;
         }
     }
 
@@ -659,14 +688,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // プログレスバー更新
-        const totalSamples = debounceData['ja'].length + debounceData['en'].length;
+        const jaSamples = debounceData['ja'].length;
+        const enSamples = debounceData['en'].length;
+        const totalSamples = jaSamples + enSamples;
         const progress = Math.min((totalSamples / DEBOUNCE_SAMPLE_SIZE) * 100, 100);
         if (progressFill) progressFill.style.width = `${progress}%`;
-        if (progressText) progressText.textContent = `データ収集: ${totalSamples}/${DEBOUNCE_SAMPLE_SIZE}件`;
+        if (progressText) progressText.textContent = `データ収集: ${totalSamples}/${DEBOUNCE_SAMPLE_SIZE}件 (日:${jaSamples} 英:${enSamples})`;
 
-        // 最適化ボタンの有効/無効
+        // 最適化ボタンの有効/無効（合計30件かつ各言語最低5件必要）
         if (optimizeBtn) {
-            optimizeBtn.disabled = totalSamples < DEBOUNCE_SAMPLE_SIZE;
+            const hasEnoughTotal = totalSamples >= DEBOUNCE_SAMPLE_SIZE;
+            const hasEnoughPerLang = jaSamples >= DEBOUNCE_MIN_SAMPLES_PER_LANG && enSamples >= DEBOUNCE_MIN_SAMPLES_PER_LANG;
+            optimizeBtn.disabled = !(hasEnoughTotal && hasEnoughPerLang);
         }
     }
 
