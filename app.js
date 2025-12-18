@@ -229,6 +229,10 @@ document.addEventListener('DOMContentLoaded', function() {
      * iOS Safariでスクロール位置が失われる問題に対応
      */
     function lockBodyScroll() {
+        // 既にロック済みの場合は何もしない（スクロール位置の上書き防止）
+        if (document.body.classList.contains('modal-open')) {
+            return;
+        }
         savedScrollPosition = window.scrollY;
         document.body.classList.add('modal-open');
         document.body.style.top = `-${savedScrollPosition}px`;
