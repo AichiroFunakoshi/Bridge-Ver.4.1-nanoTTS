@@ -224,6 +224,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // モーダル表示時のスクロール位置保存（iOS Safari対応）
     let savedScrollPosition = 0;
 
+    /**
+     * モーダル表示時のスクロールロック
+     * iOS Safariでスクロール位置が失われる問題に対応
+     */
+    function lockBodyScroll() {
+        savedScrollPosition = window.scrollY;
+        document.body.classList.add('modal-open');
+        document.body.style.top = `-${savedScrollPosition}px`;
+    }
+
+    /**
+     * モーダル非表示時のスクロールアンロック
+     * 保存したスクロール位置を復元
+     */
+    function unlockBodyScroll() {
+        document.body.classList.remove('modal-open');
+        document.body.style.top = '';
+        window.scrollTo(0, savedScrollPosition);
+    }
+
     // 言語別デフォルトデバウンス設定（科学的アプローチに基づく）
     const DEFAULT_DEBOUNCE = {
         'ja': 346,  // 日本語最適値（文節区切り対応・31%改善）
@@ -602,11 +622,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!OPENAI_API_KEY) {
             openaiKeyInput.value = DEFAULT_OPENAI_API_KEY;
-            // スクロール位置を保存してモーダルを開く
-            savedScrollPosition = window.scrollY;
             apiModal.style.display = 'flex';
-            document.body.classList.add('modal-open');
-            document.body.style.top = `-${savedScrollPosition}px`;
+            lockBodyScroll();
         } else {
             initializeApp();
         }
@@ -831,11 +848,8 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('translatorTTSEnabled', isTTSEnabled.toString());
         }
         
-        // モーダルを閉じてスクロール位置を復元
         apiModal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-        document.body.style.top = '';
-        window.scrollTo(0, savedScrollPosition);
+        unlockBodyScroll();
         initializeApp();
     });
 
@@ -845,11 +859,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (ttsToggle) {
             ttsToggle.checked = isTTSEnabled;
         }
-        // スクロール位置を保存してモーダルを開く
-        savedScrollPosition = window.scrollY;
         apiModal.style.display = 'flex';
-        document.body.classList.add('modal-open');
-        document.body.style.top = `-${savedScrollPosition}px`;
+        lockBodyScroll();
     });
 
     // APIキーリセット
@@ -857,9 +868,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (confirm('APIキーをリセットしますか？')) {
             localStorage.removeItem('translatorOpenaiKey');
             localStorage.removeItem('translatorTTSEnabled');
-            // モーダル状態をクリーンアップしてからリロード
-            document.body.classList.remove('modal-open');
-            document.body.style.top = '';
+            unlockBodyScroll();
             location.reload();
         }
     });
@@ -867,11 +876,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // モーダル外クリックで閉じる
     apiModal.addEventListener('click', (e) => {
         if (e.target === apiModal) {
-            // モーダルを閉じてスクロール位置を復元
             apiModal.style.display = 'none';
-            document.body.classList.remove('modal-open');
-            document.body.style.top = '';
-            window.scrollTo(0, savedScrollPosition);
+            unlockBodyScroll();
         }
     });
     
