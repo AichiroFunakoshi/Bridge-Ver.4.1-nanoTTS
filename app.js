@@ -221,6 +221,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // アプリ初期化フラグ（イベントリスナー重複登録防止）
     let appInitialized = false;
 
+    // モーダル表示時のスクロール位置保存（iOS Safari対応）
+    let savedScrollPosition = 0;
+
     // 言語別デフォルトデバウンス設定（科学的アプローチに基づく）
     const DEFAULT_DEBOUNCE = {
         'ja': 346,  // 日本語最適値（文節区切り対応・31%改善）
@@ -599,8 +602,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!OPENAI_API_KEY) {
             openaiKeyInput.value = DEFAULT_OPENAI_API_KEY;
+            // スクロール位置を保存してモーダルを開く
+            savedScrollPosition = window.scrollY;
             apiModal.style.display = 'flex';
             document.body.classList.add('modal-open');
+            document.body.style.top = `-${savedScrollPosition}px`;
         } else {
             initializeApp();
         }
@@ -825,35 +831,47 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('translatorTTSEnabled', isTTSEnabled.toString());
         }
         
+        // モーダルを閉じてスクロール位置を復元
         apiModal.style.display = 'none';
         document.body.classList.remove('modal-open');
+        document.body.style.top = '';
+        window.scrollTo(0, savedScrollPosition);
         initializeApp();
     });
-    
+
     // 設定モーダルを開く
     settingsButton.addEventListener('click', () => {
         openaiKeyInput.value = OPENAI_API_KEY;
         if (ttsToggle) {
             ttsToggle.checked = isTTSEnabled;
         }
+        // スクロール位置を保存してモーダルを開く
+        savedScrollPosition = window.scrollY;
         apiModal.style.display = 'flex';
         document.body.classList.add('modal-open');
+        document.body.style.top = `-${savedScrollPosition}px`;
     });
-    
+
     // APIキーリセット
     resetKeysBtn.addEventListener('click', () => {
         if (confirm('APIキーをリセットしますか？')) {
             localStorage.removeItem('translatorOpenaiKey');
             localStorage.removeItem('translatorTTSEnabled');
+            // モーダル状態をクリーンアップしてからリロード
+            document.body.classList.remove('modal-open');
+            document.body.style.top = '';
             location.reload();
         }
     });
-    
+
     // モーダル外クリックで閉じる
     apiModal.addEventListener('click', (e) => {
         if (e.target === apiModal) {
+            // モーダルを閉じてスクロール位置を復元
             apiModal.style.display = 'none';
             document.body.classList.remove('modal-open');
+            document.body.style.top = '';
+            window.scrollTo(0, savedScrollPosition);
         }
     });
     
