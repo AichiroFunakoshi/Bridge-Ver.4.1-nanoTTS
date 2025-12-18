@@ -600,6 +600,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!OPENAI_API_KEY) {
             openaiKeyInput.value = DEFAULT_OPENAI_API_KEY;
             apiModal.style.display = 'flex';
+            document.body.classList.add('modal-open');
         } else {
             initializeApp();
         }
@@ -825,6 +826,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         apiModal.style.display = 'none';
+        document.body.classList.remove('modal-open');
         initializeApp();
     });
     
@@ -835,6 +837,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ttsToggle.checked = isTTSEnabled;
         }
         apiModal.style.display = 'flex';
+        document.body.classList.add('modal-open');
     });
     
     // APIキーリセット
@@ -850,6 +853,7 @@ document.addEventListener('DOMContentLoaded', function() {
     apiModal.addEventListener('click', (e) => {
         if (e.target === apiModal) {
             apiModal.style.display = 'none';
+            document.body.classList.remove('modal-open');
         }
     });
     
