@@ -221,6 +221,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // アプリ初期化フラグ（イベントリスナー重複登録防止）
     let appInitialized = false;
 
+    // モーダル表示時のスクロール位置保存（iOS Safari対応）
+    let savedScrollPosition = 0;
+
+    /**
+     * モーダル表示時のスクロールロック
+     * iOS Safariでスクロール位置が失われる問題に対応
+     */
+    function lockBodyScroll() {
+        // 既にロック済みの場合は何もしない（スクロール位置の上書き防止）
+        if (document.body.classList.contains('modal-open')) {
+            return;
+        }
+        savedScrollPosition = window.scrollY;
+        document.body.classList.add('modal-open');
+        document.body.style.top = `-${savedScrollPosition}px`;
+    }
+
+    /**
+     * モーダル非表示時のスクロールアンロック
+     * 保存したスクロール位置を復元
+     */
+    function unlockBodyScroll() {
+        document.body.classList.remove('modal-open');
+        document.body.style.top = '';
+        window.scrollTo(0, savedScrollPosition);
+    }
+
     // 言語別デフォルトデバウンス設定（科学的アプローチに基づく）
     const DEFAULT_DEBOUNCE = {
         'ja': 346,  // 日本語最適値（文節区切り対応・31%改善）
@@ -600,6 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!OPENAI_API_KEY) {
             openaiKeyInput.value = DEFAULT_OPENAI_API_KEY;
             apiModal.style.display = 'flex';
+            lockBodyScroll();
         } else {
             initializeApp();
         }
@@ -825,9 +853,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         apiModal.style.display = 'none';
+        unlockBodyScroll();
         initializeApp();
     });
-    
+
     // 設定モーダルを開く
     settingsButton.addEventListener('click', () => {
         openaiKeyInput.value = OPENAI_API_KEY;
@@ -835,21 +864,24 @@ document.addEventListener('DOMContentLoaded', function() {
             ttsToggle.checked = isTTSEnabled;
         }
         apiModal.style.display = 'flex';
+        lockBodyScroll();
     });
-    
+
     // APIキーリセット
     resetKeysBtn.addEventListener('click', () => {
         if (confirm('APIキーをリセットしますか？')) {
             localStorage.removeItem('translatorOpenaiKey');
             localStorage.removeItem('translatorTTSEnabled');
+            unlockBodyScroll();
             location.reload();
         }
     });
-    
+
     // モーダル外クリックで閉じる
     apiModal.addEventListener('click', (e) => {
         if (e.target === apiModal) {
             apiModal.style.display = 'none';
+            unlockBodyScroll();
         }
     });
     
