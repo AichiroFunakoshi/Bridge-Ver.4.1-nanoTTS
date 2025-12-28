@@ -177,6 +177,11 @@ document.addEventListener('DOMContentLoaded', function() {
      * macOS/Windowsでは音声の読み込みが非同期のため、voiceschangedイベントを監視
      */
     function loadVoices() {
+        if (!window.speechSynthesis) {
+            console.warn('speechSynthesis APIが利用できません');
+            cachedVoices = [];
+            return;
+        }
         cachedVoices = window.speechSynthesis.getVoices();
         console.log('利用可能な音声:', cachedVoices.length, '件');
     }
@@ -188,6 +193,9 @@ document.addEventListener('DOMContentLoaded', function() {
      * @returns {boolean} - 高品質音声の場合true
      */
     function isPremiumVoice(voice) {
+        if (!voice || !voice.name) {
+            return false;
+        }
         const name = voice.name.toLowerCase();
         // Enhanced, Premium, 拡張 などの高品質音声を検出
         return name.includes('enhanced') ||
@@ -206,6 +214,12 @@ document.addEventListener('DOMContentLoaded', function() {
      * @returns {SpeechSynthesisVoice|null} - 最適な音声、見つからない場合はnull
      */
     function getBestVoiceForLanguage(langCode) {
+        // パラメータ検証
+        if (!langCode || typeof langCode !== 'string') {
+            console.warn('無効な言語コード:', langCode);
+            return null;
+        }
+
         if (cachedVoices.length === 0) {
             loadVoices();
         }
