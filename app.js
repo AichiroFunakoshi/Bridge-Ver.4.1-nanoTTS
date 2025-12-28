@@ -170,6 +170,66 @@ document.addEventListener('DOMContentLoaded', function() {
     let isTTSPlaying = false; // TTS再生中フラグ
     let ttsInitialized = false; // iOS Safari用: TTS初期化済みフラグ
     let ttsSpeed = 1.0; // TTS再生速度（デフォルト: 1.0）
+    let cachedVoices = []; // 利用可能な音声のキャッシュ
+
+    /**
+     * 利用可能な音声一覧を取得・キャッシュ
+     * macOS/Windowsでは音声の読み込みが非同期のため、voiceschangedイベントを監視
+     */
+    function loadVoices() {
+        cachedVoices = window.speechSynthesis.getVoices();
+        console.log('利用可能な音声:', cachedVoices.length, '件');
+    }
+
+    /**
+     * 指定言語に最適な音声を選択
+     * @param {string} langCode - 言語コード（'en-US' または 'ja-JP'）
+     * @returns {SpeechSynthesisVoice|null} - 最適な音声、見つからない場合はnull
+     */
+    function getBestVoiceForLanguage(langCode) {
+        if (cachedVoices.length === 0) {
+            loadVoices();
+        }
+
+        const langPrefix = langCode.split('-')[0]; // 'en' or 'ja'
+
+        // 優先順位:
+        // 1. 完全一致するローカル音声（高品質）
+        // 2. 言語プレフィックスが一致するローカル音声
+        // 3. 完全一致するネットワーク音声
+        // 4. 言語プレフィックスが一致する音声
+
+        // 完全一致 + ローカル音声を優先
+        let voice = cachedVoices.find(v => v.lang === langCode && v.localService);
+        if (voice) {
+            console.log('音声選択（完全一致・ローカル）:', voice.name, voice.lang);
+            return voice;
+        }
+
+        // 言語プレフィックス一致 + ローカル音声
+        voice = cachedVoices.find(v => v.lang.startsWith(langPrefix) && v.localService);
+        if (voice) {
+            console.log('音声選択（プレフィックス一致・ローカル）:', voice.name, voice.lang);
+            return voice;
+        }
+
+        // 完全一致（ネットワーク含む）
+        voice = cachedVoices.find(v => v.lang === langCode);
+        if (voice) {
+            console.log('音声選択（完全一致）:', voice.name, voice.lang);
+            return voice;
+        }
+
+        // 言語プレフィックス一致
+        voice = cachedVoices.find(v => v.lang.startsWith(langPrefix));
+        if (voice) {
+            console.log('音声選択（プレフィックス一致）:', voice.name, voice.lang);
+            return voice;
+        }
+
+        console.warn('適切な音声が見つかりません:', langCode);
+        return null;
+    }
     
     // DOM要素
     const startJapaneseBtn = document.getElementById('startJapaneseBtn');
@@ -407,10 +467,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const utterance = new SpeechSynthesisUtterance(text);
 
         // 言語設定（日本語→英語翻訳なら英語で、英語→日本語翻訳なら日本語で読み上げ）
-        utterance.lang = language === 'ja' ? 'en-US' : 'ja-JP';
+        const targetLang = language === 'ja' ? 'en-US' : 'ja-JP';
+        utterance.lang = targetLang;
+
+        // 最適な音声を選択（macOS/Windows対応）
+        const selectedVoice = getBestVoiceForLanguage(targetLang);
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        }
 
         console.log('TTS設定:', {
             lang: utterance.lang,
+            voice: selectedVoice ? selectedVoice.name : 'デフォルト',
             textLength: text.length
         });
 
@@ -1087,8 +1155,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // TTS対応確認
-        if (!('speechSynthesis' in window)) {
+        // TTS対応確認と音声リストの初期化
+        if ('speechSynthesis' in window) {
+            // 音声リストを初期読み込み
+            loadVoices();
+            // 音声リストが非同期で読み込まれる場合（macOS/Windows）
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        } else {
             console.warn('このブラウザはTTSに対応していません');
         }
 
