@@ -182,6 +182,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
+     * 高品質音声かどうかを判定
+     * Apple デバイスのEnhanced/Premium音声を検出
+     * @param {SpeechSynthesisVoice} voice - 判定する音声
+     * @returns {boolean} - 高品質音声の場合true
+     */
+    function isPremiumVoice(voice) {
+        const name = voice.name.toLowerCase();
+        // Enhanced, Premium, 拡張 などの高品質音声を検出
+        return name.includes('enhanced') ||
+               name.includes('premium') ||
+               name.includes('拡張') ||
+               name.includes('siri') ||
+               // Apple の高品質日本語音声名
+               name.includes('o-ren') ||
+               name.includes('hattori') ||
+               name.includes('ayumi');
+    }
+
+    /**
      * 指定言語に最適な音声を選択
      * @param {string} langCode - 言語コード（'en-US' または 'ja-JP'）
      * @returns {SpeechSynthesisVoice|null} - 最適な音声、見つからない場合はnull
@@ -192,8 +211,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const langPrefix = langCode.split('-')[0]; // 'en' or 'ja'
+        const isJapanese = langPrefix === 'ja';
 
-        // 優先順位:
+        // 日本語の場合はEnhanced/Premium音声を最優先
+        if (isJapanese) {
+            // 1. 日本語のPremium/Enhanced音声を優先
+            let voice = cachedVoices.find(v =>
+                v.lang.startsWith('ja') && isPremiumVoice(v)
+            );
+            if (voice) {
+                console.log('音声選択（日本語・高品質）:', voice.name, voice.lang);
+                return voice;
+            }
+        }
+
+        // 優先順位（英語 または 日本語のフォールバック）:
         // 1. 完全一致するローカル音声（高品質）
         // 2. 言語プレフィックスが一致するローカル音声
         // 3. 完全一致するネットワーク音声
