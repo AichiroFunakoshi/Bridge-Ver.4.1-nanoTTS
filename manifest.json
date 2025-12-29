@@ -1,7 +1,7 @@
 {
-  "name": "Bridge(Ver.4.1-nano) - デバウンス最適化版",
-  "short_name": "Bridge Optimized",
-  "description": "日本語と英語間のリアルタイム音声翻訳 - デバウンス最適化版（GPT-4.1-nano搭載）",
+  "name": "BridgeTTS",
+  "short_name": "BridgeTTS",
+  "description": "日英リアルタイム音声翻訳PWA",
   "icons": [
     {
       "src": "images/icons/icon-120x120.png",
