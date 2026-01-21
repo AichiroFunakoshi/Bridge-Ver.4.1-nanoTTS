@@ -321,6 +321,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastTranslatedText = ''; // 最後に翻訳した内容を記録
     let translationDebounceTimer = null;
 
+    // 音声認識の再起動管理（マイク問題対策）
+    let recognitionRestartAttempts = 0; // 再起動試行回数
+    const MAX_RESTART_ATTEMPTS = 5; // 最大再起動試行回数
+    let recognitionHealthCheckInterval = null; // 状態監視タイマー
+    const HEALTH_CHECK_INTERVAL = 5000; // 状態チェック間隔（5秒）
+    let lastRecognitionResultTime = 0; // 最後に結果を受信した時刻
+    const RECOGNITION_TIMEOUT_MS = 30000; // 音声認識タイムアウト（30秒）
+    const PROCESSED_IDS_MAX_SIZE = 500; // processedResultIdsの最大サイズ（メモリリーク対策）
+
     // TTS用の最終翻訳結果を保存
     let lastTranslationResult = '';
 
@@ -597,21 +606,92 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('TTS停止');
     }
 
-    // 音声認識を安全に再開するヘルパー関数
+    // 音声認識の状態を監視する関数（新規追加）
+    function startRecognitionHealthCheck() {
+        // 既存のタイマーをクリア
+        if (recognitionHealthCheckInterval) {
+            clearInterval(recognitionHealthCheckInterval);
+        }
+
+        console.log('音声認識の状態監視を開始');
+
+        recognitionHealthCheckInterval = setInterval(() => {
+            if (!isRecording || !recognition) {
+                return;
+            }
+
+            const now = Date.now();
+            const timeSinceLastResult = now - lastRecognitionResultTime;
+
+            // 録音中だが長時間結果がない場合
+            if (isRecording && timeSinceLastResult > RECOGNITION_TIMEOUT_MS && lastRecognitionResultTime > 0) {
+                console.warn(`音声認識が${RECOGNITION_TIMEOUT_MS / 1000}秒間応答なし。状態を確認します。`);
+
+                // 音声認識が実際には停止している可能性
+                if (!isRecognitionRunning) {
+                    console.log('音声認識が停止していることを検知。再起動を試みます。');
+                    safeRestartRecognition(100, 'ヘルスチェック');
+                } else {
+                    console.log('音声認識は実行中ですが、結果がありません。ユーザーに通知します。');
+                    // 長時間無音の可能性をユーザーに通知（エラーではない）
+                    if (status) {
+                        const prevText = status.textContent;
+                        status.textContent = '録音中（音声を検出していません）';
+                        setTimeout(() => {
+                            if (isRecording) {
+                                status.textContent = prevText;
+                            }
+                        }, 3000);
+                    }
+                }
+            }
+        }, HEALTH_CHECK_INTERVAL);
+    }
+
+    // 音声認識の状態監視を停止する関数（新規追加）
+    function stopRecognitionHealthCheck() {
+        if (recognitionHealthCheckInterval) {
+            console.log('音声認識の状態監視を停止');
+            clearInterval(recognitionHealthCheckInterval);
+            recognitionHealthCheckInterval = null;
+        }
+    }
+
+    // 音声認識を安全に再開するヘルパー関数（改善版）
     function safeRestartRecognition(delayMs = 100, source = '') {
         if (!isRecording || !recognition) {
+            console.log(`再起動スキップ: isRecording=${isRecording}, recognition=${!!recognition}`);
             return;
         }
+
+        // 最大再起動回数を超えた場合は警告
+        if (recognitionRestartAttempts >= MAX_RESTART_ATTEMPTS) {
+            console.warn(`音声認識の再起動が${MAX_RESTART_ATTEMPTS}回失敗しました。ユーザーに再起動を促します。`);
+            errorMessage.textContent = 'マイクの接続が不安定です。停止ボタンを押して再度開始してください。';
+            return;
+        }
+
         setTimeout(() => {
             if (isRecording && !isRecognitionRunning && !isTTSPlaying) {
                 try {
-                    console.log(`音声認識を再開${source ? ' (' + source + ')' : ''}`);
+                    console.log(`音声認識を再開 (試行${recognitionRestartAttempts + 1}/${MAX_RESTART_ATTEMPTS})${source ? ' (' + source + ')' : ''}`);
                     recognition.start();
+                    recognitionRestartAttempts++;
                 } catch (e) {
                     console.error('音声認識の再開に失敗:', e?.message || e);
-                    // 既に実行中の場合は無視（DOMException.nameまたはメッセージで判定）
+
+                    // 既に実行中の場合、フラグを正しく設定
                     if (e?.name === 'InvalidStateError' || e?.message?.includes('already started')) {
+                        console.log('音声認識は既に実行中です。フラグを修正します。');
                         isRecognitionRunning = true;
+                        recognitionRestartAttempts = 0; // カウンタをリセット
+                    } else {
+                        // その他のエラーの場合、リトライ
+                        recognitionRestartAttempts++;
+                        if (recognitionRestartAttempts < MAX_RESTART_ATTEMPTS) {
+                            console.log(`${delayMs * 2}ms後に再試行します`);
+                            safeRestartRecognition(delayMs * 2, source + '(retry)');
+                        }
                     }
                 }
             }
@@ -1304,6 +1384,13 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('音声認識開始。言語:', recognition.lang);
             isRecognitionRunning = true;
             listeningIndicator.classList.add('visible');
+
+            // 音声認識が正常に開始したので、再起動カウンターをリセット
+            recognitionRestartAttempts = 0;
+            // エラーメッセージもクリア
+            if (errorMessage) {
+                errorMessage.textContent = '';
+            }
         };
 
         recognition.onend = function() {
@@ -1326,25 +1413,37 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 音声認識結果の処理 - デバウンス最適化版
         recognition.onresult = function(event) {
+            // 最後の結果受信時刻を更新（状態監視用）
+            lastRecognitionResultTime = Date.now();
+
             // 現在の文字起こし内容を構築
             let interimText = '';
             let finalText = '';
             let hasNewContent = false;
-            
+
             // 各認識結果に対して処理
             for (let i = 0; i < event.results.length; i++) {
                 const result = event.results[i];
                 const transcript = result[0].transcript.trim();
-                
+
                 // 各結果に一意のIDを生成（位置＋内容）
                 const resultId = `${i}-${transcript}`;
-                
+
                 // 確定した結果の場合
                 if (result.isFinal) {
                     // まだ処理していない結果の場合のみ追加
                     if (!processedResultIds.has(resultId)) {
                         processedResultIds.add(resultId);
                         hasNewContent = true;
+
+                        // メモリリーク対策: processedResultIdsが大きくなりすぎたら古いものを削除
+                        if (processedResultIds.size > PROCESSED_IDS_MAX_SIZE) {
+                            console.log(`processedResultIdsが${PROCESSED_IDS_MAX_SIZE}件を超えました。古いデータを削除します。`);
+                            const idsArray = Array.from(processedResultIds);
+                            // 古い半分を削除（FIFOのように動作）
+                            const idsToKeep = idsArray.slice(Math.floor(idsArray.length / 2));
+                            processedResultIds = new Set(idsToKeep);
+                        }
 
                         // デバウンス最適化用: ポーズ間隔を記録
                         recordPauseInterval(selectedLanguage);
@@ -1500,9 +1599,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Web Speech APIを使用して言語を明示的に設定
         try {
+            // 再起動カウンターをリセット
+            recognitionRestartAttempts = 0;
+            // 最後の結果受信時刻を初期化
+            lastRecognitionResultTime = Date.now();
+
             // 認識言語を設定
             recognition.lang = language === 'ja' ? 'ja-JP' : 'en-US';
             recognition.start();
+
+            // 音声認識の状態監視を開始
+            startRecognitionHealthCheck();
         } catch (e) {
             console.error('音声認識開始エラー', e);
             errorMessage.textContent = '音声認識の開始に失敗しました: ' + (e?.message || e);
@@ -1521,25 +1628,31 @@ document.addEventListener('DOMContentLoaded', function() {
         // 録音状態の視覚的フィードバックを解除
         updateRecordingState(false);
 
+        // 音声認識の状態監視を停止
+        stopRecognitionHealthCheck();
+
+        // 再起動カウンターをリセット
+        recognitionRestartAttempts = 0;
+
         // TTS停止
         stopTTS();
 
         // ボタン表示を更新 - 開始ボタンを表示、停止ボタンを非表示
         updateButtonVisibility(false);
-        
+
         try {
             recognition.stop();
         } catch (e) {
             console.error('音声認識停止エラー', e);
         }
-        
+
         // 処理完了後にステータスを更新
         setTimeout(() => {
             status.textContent = '待機中';
             status.classList.remove('processing');
             status.classList.add('idle');
         }, 1000);
-        
+
         console.log('録音停止');
     }
     
