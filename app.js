@@ -127,11 +127,104 @@ const ErrorReporter = {
         };
     },
 
+    /**
+     * エラーログを分析してエラーの種類を判定する
+     * @param {Array} logs - エラーログの配列
+     * @returns {Object} - { category: string, keywords: Array }
+     */
+    analyzeErrorType: function(logs) {
+        const errorMessages = logs
+            .filter(log => log.level === 'error' || log.level === 'warn')
+            .map(log => log.message.toLowerCase());
+
+        const allMessages = errorMessages.join(' ');
+
+        // エラーカテゴリのパターンマッチング
+        const patterns = {
+            microphone: {
+                keywords: ['マイク', 'microphone', '音声認識', 'recognition', 'audio-capture', 'not-allowed', 'permission', '再起動', 'restart'],
+                priority: 1
+            },
+            tts: {
+                keywords: ['tts', 'speech synthesis', 'speechsynthesis', '音声合成', '読み上げ', 'utterance', 'speak'],
+                priority: 2
+            },
+            translation: {
+                keywords: ['翻訳', 'translation', 'openai', 'api', 'gpt', 'completions', '401', '429', 'rate limit'],
+                priority: 3
+            },
+            network: {
+                keywords: ['network', 'fetch', 'http', 'connection', 'ネットワーク', 'failed to fetch', 'cors'],
+                priority: 4
+            },
+            timeout: {
+                keywords: ['timeout', 'タイムアウト', '応答なし', '30秒', 'no response'],
+                priority: 5
+            }
+        };
+
+        // 各カテゴリのマッチング数をカウント
+        let bestMatch = { category: 'other', score: 0, keywords: [] };
+
+        for (const [category, config] of Object.entries(patterns)) {
+            const matchedKeywords = config.keywords.filter(keyword =>
+                allMessages.includes(keyword)
+            );
+
+            if (matchedKeywords.length > bestMatch.score) {
+                bestMatch = {
+                    category: category,
+                    score: matchedKeywords.length,
+                    keywords: matchedKeywords,
+                    priority: config.priority
+                };
+            } else if (matchedKeywords.length === bestMatch.score && config.priority < bestMatch.priority) {
+                // 同じスコアの場合は優先度が高い方を選択
+                bestMatch = {
+                    category: category,
+                    score: matchedKeywords.length,
+                    keywords: matchedKeywords,
+                    priority: config.priority
+                };
+            }
+        }
+
+        return bestMatch;
+    },
+
+    /**
+     * エラーの種類に応じたタイトルを生成
+     * @param {string} category - エラーカテゴリ
+     * @returns {string} - Issueタイトル
+     */
+    generateErrorTitle: function(category) {
+        const titles = {
+            microphone: 'エラーレポート: マイク/音声認識の問題',
+            tts: 'エラーレポート: TTS（音声読み上げ）の問題',
+            translation: 'エラーレポート: 翻訳APIの問題',
+            network: 'エラーレポート: ネットワーク接続の問題',
+            timeout: 'エラーレポート: タイムアウト・応答なしの問題',
+            other: 'エラーレポート: アプリケーションエラー'
+        };
+
+        return titles[category] || titles.other;
+    },
+
     openGitHubIssue: function(report) {
-        const title = encodeURIComponent('エラーレポート: TTS機能の問題');
+        // エラーの種類を分析
+        const errorAnalysis = this.analyzeErrorType(report.logs);
+        const title = this.generateErrorTitle(errorAnalysis.category);
+
+        // エラー分析結果をボディに追加
+        const analysisSection = errorAnalysis.category !== 'other'
+            ? `**エラー分類**: ${errorAnalysis.category}\n**検出キーワード**: ${errorAnalysis.keywords.join(', ')}\n\n`
+            : '';
+
+        const encodedTitle = encodeURIComponent(title);
         const body = encodeURIComponent(
             `## エラーレポート\n\n` +
             `**発生日時**: ${report.timestamp}\n\n` +
+            analysisSection +
             `**環境情報**:\n` +
             `- ブラウザ: ${report.userAgent}\n` +
             `- プラットフォーム: ${report.platform}\n` +
@@ -146,7 +239,7 @@ const ErrorReporter = {
             `**実際の動作**:\n`
         );
 
-        const issueUrl = `https://github.com/AichiroFunakoshi/Bridge-Ver.4.1-nanoTTS/issues/new?title=${title}&body=${body}`;
+        const issueUrl = `https://github.com/AichiroFunakoshi/Bridge-Ver.4.1-nanoTTS/issues/new?title=${encodedTitle}&body=${body}`;
         window.open(issueUrl, '_blank');
     }
 };
