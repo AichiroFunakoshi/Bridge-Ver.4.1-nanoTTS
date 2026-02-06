@@ -1844,14 +1844,16 @@ document.addEventListener('DOMContentLoaded', function() {
         translationBox.appendChild(warning);
 
         // 再翻訳ボタンのイベントリスナー
-        document.getElementById('retryTranslationBtn').addEventListener('click', () => {
+        document.getElementById('retryTranslationBtn').addEventListener('click', (e) => {
+            e.stopPropagation(); // TTS再生イベントの伝播を防止
             console.log('再翻訳を実行:', originalText);
             warning.remove();
             translateText(originalText);
         });
 
         // 閉じるボタンのイベントリスナー
-        document.getElementById('closeWarningBtn').addEventListener('click', () => {
+        document.getElementById('closeWarningBtn').addEventListener('click', (e) => {
+            e.stopPropagation(); // TTS再生イベントの伝播を防止
             warning.remove();
         });
 
@@ -1870,7 +1872,13 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('翻訳スキップ: 空のテキスト');
             return;
         }
-        
+
+        // 前回の翻訳品質警告を削除（新しい翻訳が始まる際に古い警告が残らないように）
+        const staleWarning = document.getElementById('translationQualityWarning');
+        if (staleWarning) {
+            staleWarning.remove();
+        }
+
         // 既に翻訳中の場合は新しいリクエストで上書き
         if (translationInProgress) {
             // 既存のリクエストを中断

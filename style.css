@@ -1488,3 +1488,39 @@ body.modal-open {
         min-height: 44px;
     }
 }
+
+/* 横向き（ランドスケープ）モードでの調整 */
+@media (max-height: 500px) and (orientation: landscape) {
+    .translation-quality-warning {
+        top: 3px;
+        left: 5px;
+        right: 5px;
+        padding: 6px 8px;
+    }
+
+    .warning-content {
+        gap: 6px;
+    }
+
+    .warning-icon {
+        font-size: 14px;
+    }
+
+    .warning-text {
+        font-size: 11px;
+        min-width: 100px;
+    }
+
+    .retry-translation-btn {
+        padding: 4px 8px;
+        font-size: 10px;
+        min-height: 36px;
+    }
+
+    .close-warning-btn {
+        font-size: 16px;
+        padding: 8px;
+        min-width: 36px;
+        min-height: 36px;
+    }
+}
