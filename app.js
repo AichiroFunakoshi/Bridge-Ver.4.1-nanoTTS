@@ -1444,6 +1444,9 @@ document.addEventListener('DOMContentLoaded', function() {
         originalText.textContent = '';
         translatedText.textContent = '';
 
+        // 翻訳品質警告の履歴もクリア
+        translationQualityWarningHistory.clear();
+
         // 再生ボタンを無効化
         updateTranslationBoxState(false);
 
@@ -1458,7 +1461,7 @@ document.addEventListener('DOMContentLoaded', function() {
         status.classList.add('idle');
 
         errorMessage.textContent = '';
-        
+
         console.log('コンテンツリセット完了');
     }
     
@@ -1774,8 +1777,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const japanesePattern = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
 
         // 括弧内の日本語を一時的に除外してからチェック
-        // 例: "staff meeting (担当者会議)" → "staff meeting ()"
-        const textWithoutParentheses = translatedText.replace(/\([^)]*[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF][^)]*\)/g, '()');
+        // 半角括弧: "staff meeting (担当者会議)" → "staff meeting ()"
+        // 全角括弧: "staff meeting（担当者会議）" → "staff meeting（）"
+        let textWithoutParentheses = translatedText;
+        // 半角括弧内の日本語を除外
+        textWithoutParentheses = textWithoutParentheses.replace(/\([^)]*[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF][^)]*\)/g, '()');
+        // 全角括弧内の日本語を除外
+        textWithoutParentheses = textWithoutParentheses.replace(/\uFF08[^\uFF09]*[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF][^\uFF09]*\uFF09/g, '（）');
 
         // 括弧外に日本語が含まれているかチェック
         const hasUntranslatedJapanese = japanesePattern.test(textWithoutParentheses);
