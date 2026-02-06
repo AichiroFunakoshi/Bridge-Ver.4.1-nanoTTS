@@ -1365,3 +1365,125 @@ body.modal-open {
         height: 12px;
     }
 }
+
+/* 翻訳品質警告スタイル */
+.translation-quality-warning {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+    z-index: 100;
+    animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.warning-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.warning-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.warning-text {
+    flex: 1;
+    font-size: 13px;
+    color: #856404;
+    font-weight: 500;
+    min-width: 150px;
+}
+
+.retry-translation-btn {
+    background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(255, 149, 0, 0.3);
+}
+
+.retry-translation-btn:hover {
+    background: linear-gradient(135deg, #ff6b00 0%, #ff4500 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 149, 0, 0.4);
+}
+
+.retry-translation-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(255, 149, 0, 0.3);
+}
+
+.close-warning-btn {
+    background: transparent;
+    border: none;
+    color: #856404;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.close-warning-btn:hover {
+    background: rgba(133, 100, 4, 0.1);
+    color: #533f03;
+}
+
+/* 小さい画面用の調整 */
+@media (max-width: 600px) {
+    .translation-quality-warning {
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        padding: 8px 10px;
+    }
+
+    .warning-text {
+        font-size: 12px;
+        min-width: 120px;
+    }
+
+    .warning-icon {
+        font-size: 16px;
+    }
+
+    .retry-translation-btn {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    .close-warning-btn {
+        width: 20px;
+        height: 20px;
+        font-size: 18px;
+    }
+}
