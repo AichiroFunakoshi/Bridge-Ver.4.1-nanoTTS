@@ -426,6 +426,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // TTS用の最終翻訳結果を保存
     let lastTranslationResult = '';
 
+    // 翻訳品質警告の表示履歴（無限ループ防止）
+    const translationQualityWarningHistory = new Map(); // key: originalText, value: warningCount
+    const MAX_QUALITY_WARNING_COUNT = 3; // 同じテキストに対する最大警告回数
+
     // アプリ初期化フラグ（イベントリスナー重複登録防止）
     let appInitialized = false;
 
@@ -1754,6 +1758,7 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * 翻訳結果の品質をチェックする
      * 日本語から英語への翻訳で未翻訳の日本語が残っている場合に警告を表示
+     * 括弧内の日本語（例：「staff meeting (担当者会議)」）は正常な翻訳として扱う
      * @param {string} originalText - 元のテキスト
      * @param {string} translatedText - 翻訳されたテキスト
      * @param {string} sourceLanguage - 元の言語（'ja' または 'en'）
@@ -1768,14 +1773,33 @@ document.addEventListener('DOMContentLoaded', function() {
         // 日本語文字（漢字、ひらがな、カタカナ）の正規表現
         const japanesePattern = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
 
-        // 翻訳結果に日本語が含まれているかチェック
-        const hasUntranslatedJapanese = japanesePattern.test(translatedText);
+        // 括弧内の日本語を一時的に除外してからチェック
+        // 例: "staff meeting (担当者会議)" → "staff meeting ()"
+        const textWithoutParentheses = translatedText.replace(/\([^)]*[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF][^)]*\)/g, '()');
+
+        // 括弧外に日本語が含まれているかチェック
+        const hasUntranslatedJapanese = japanesePattern.test(textWithoutParentheses);
 
         if (hasUntranslatedJapanese) {
+            // 同じテキストに対する警告回数をチェック
+            const warningCount = translationQualityWarningHistory.get(originalText) || 0;
+            if (warningCount >= MAX_QUALITY_WARNING_COUNT) {
+                console.log('翻訳品質警告: 最大警告回数に達したため警告をスキップ', {
+                    original: originalText,
+                    warningCount: warningCount
+                });
+                return false; // 警告を表示しない
+            }
+
             console.warn('翻訳品質警告: 翻訳結果に日本語が残っています', {
                 original: originalText,
-                translated: translatedText
+                translated: translatedText,
+                afterFiltering: textWithoutParentheses,
+                warningCount: warningCount + 1
             });
+
+            // 警告回数をインクリメント
+            translationQualityWarningHistory.set(originalText, warningCount + 1);
             showTranslationQualityWarning(originalText);
             return true;
         }
@@ -1823,7 +1847,7 @@ document.addEventListener('DOMContentLoaded', function() {
             warning.remove();
         });
 
-        // 5秒後に自動的に閉じる（再翻訳ボタンは押されない場合のみ）
+        // 10秒後に自動的に閉じる（再翻訳ボタンは押されない場合のみ）
         setTimeout(() => {
             if (document.getElementById('translationQualityWarning')) {
                 warning.remove();

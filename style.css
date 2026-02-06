@@ -1443,9 +1443,9 @@ body.modal-open {
     font-size: 20px;
     font-weight: bold;
     cursor: pointer;
-    padding: 0;
-    width: 24px;
-    height: 24px;
+    padding: 10px;
+    min-width: 44px;
+    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1482,8 +1482,9 @@ body.modal-open {
     }
 
     .close-warning-btn {
-        width: 20px;
-        height: 20px;
         font-size: 18px;
+        padding: 10px;
+        min-width: 44px;
+        min-height: 44px;
     }
 }
