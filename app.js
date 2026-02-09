@@ -429,6 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 翻訳品質警告の表示履歴（無限ループ防止）
     const translationQualityWarningHistory = new Map(); // key: originalText, value: warningCount
     const MAX_QUALITY_WARNING_COUNT = 3; // 同じテキストに対する最大警告回数
+    const MAX_WARNING_HISTORY_SIZE = 100; // 警告履歴の最大サイズ（メモリ最適化）
 
     // アプリ初期化フラグ（イベントリスナー重複登録防止）
     let appInitialized = false;
@@ -1765,9 +1766,10 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {string} originalText - 元のテキスト
      * @param {string} translatedText - 翻訳されたテキスト
      * @param {string} sourceLanguage - 元の言語（'ja' または 'en'）
+     * @param {HTMLElement} targetElement - 警告を表示する要素（translationBox）
      * @returns {boolean} - 品質に問題がある場合true
      */
-    function checkTranslationQuality(originalText, translatedText, sourceLanguage) {
+    function checkTranslationQuality(originalText, translatedText, sourceLanguage, targetElement) {
         // 日本語から英語への翻訳の場合のみチェック
         if (sourceLanguage !== 'ja') {
             return false;
@@ -1808,7 +1810,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // 警告回数をインクリメント
             translationQualityWarningHistory.set(originalText, warningCount + 1);
-            showTranslationQualityWarning(originalText);
+
+            // Mapのサイズ上限チェック（メモリ最適化）
+            if (translationQualityWarningHistory.size > MAX_WARNING_HISTORY_SIZE) {
+                // 最も古いエントリを削除（Mapは挿入順を保持）
+                const firstKey = translationQualityWarningHistory.keys().next().value;
+                translationQualityWarningHistory.delete(firstKey);
+                console.log('警告履歴の最大サイズに達したため、古いエントリを削除しました');
+            }
+
+            showTranslationQualityWarning(originalText, targetElement);
             return true;
         }
 
@@ -1818,8 +1829,9 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * 翻訳品質の警告を表示し、再翻訳オプションを提供
      * @param {string} originalText - 元のテキスト
+     * @param {HTMLElement} targetElement - 警告を表示する要素（translationBox）
      */
-    function showTranslationQualityWarning(originalText) {
+    function showTranslationQualityWarning(originalText, targetElement) {
         // 既存の警告があれば削除
         const existingWarning = document.getElementById('translationQualityWarning');
         if (existingWarning) {
@@ -1840,8 +1852,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         // 翻訳ボックスに追加
-        const translationBox = document.getElementById('translationBox');
-        translationBox.appendChild(warning);
+        targetElement.appendChild(warning);
 
         // 再翻訳ボタンのイベントリスナー
         document.getElementById('retryTranslationBtn').addEventListener('click', (e) => {
@@ -2002,7 +2013,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('翻訳結果を保存しました。再生ボタンで読み上げ可能です。');
 
                 // 翻訳品質チェック
-                checkTranslationQuality(text, translationResult, selectedLanguage);
+                checkTranslationQuality(text, translationResult, selectedLanguage, translationBox);
             } else {
                 lastTranslationResult = '';
                 updateTranslationBoxState(false);
