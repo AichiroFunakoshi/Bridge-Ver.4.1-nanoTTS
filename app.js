@@ -1448,6 +1448,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // 翻訳品質警告の履歴もクリア
         translationQualityWarningHistory.clear();
 
+        // 翻訳品質警告の要素も削除
+        const warningElement = document.getElementById('translationQualityWarning');
+        if (warningElement) {
+            warningElement.remove();
+        }
+
         // 再生ボタンを無効化
         updateTranslationBoxState(false);
 
@@ -1853,6 +1859,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 翻訳ボックスに追加
         targetElement.appendChild(warning);
+
+        // 警告要素全体のクリックイベントを処理（TTS再生イベントの伝播を防止）
+        warning.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
 
         // 再翻訳ボタンのイベントリスナー
         document.getElementById('retryTranslationBtn').addEventListener('click', (e) => {
