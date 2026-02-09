@@ -426,6 +426,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // TTS用の最終翻訳結果を保存
     let lastTranslationResult = '';
 
+    // 翻訳品質警告の表示履歴（無限ループ防止）
+    const translationQualityWarningHistory = new Map(); // key: originalText, value: warningCount
+    const MAX_QUALITY_WARNING_COUNT = 3; // 同じテキストに対する最大警告回数
+    const MAX_WARNING_HISTORY_SIZE = 100; // 警告履歴の最大サイズ（メモリ最適化）
+
     // アプリ初期化フラグ（イベントリスナー重複登録防止）
     let appInitialized = false;
 
@@ -1418,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
 3. 「えー」「うー」などのフィラーや冗長な表現は除去する。
 4. データが不足している場合は文脈に基づいて補完する。
 5. 人名、地名、企業名などの固有名詞は適切に翻訳または音訳する（例：「デビさん」→「Devi」）。
-6. 専門用語や業務用語は必ず翻訳する（例：「担当者会議」→「staff meeting」、「報告書」→「report」）。
+6. 専門用語や業務用語は必ず翻訳する（例：「担当者会議」→「staff meeting」、「報告書」→「report」）。文脈から判断して一般的な業務用語であれば必ず翻訳し、不明な場合は翻訳を優先して括弧で原文を併記する（例：「staff meeting (担当者会議)」）。
 7. 文化的な概念（例：お盆、正月など）は翻訳し、括弧内に簡潔な説明を追加する（例：「お盆」→「Obon (summer holiday)」）。
 8. 出力は自然で会話的にする。
 9. 翻訳のみを出力し、解説や補足コメントは含めない（文化的な概念の括弧内説明は除く）。`;
@@ -1440,6 +1445,9 @@ document.addEventListener('DOMContentLoaded', function() {
         originalText.textContent = '';
         translatedText.textContent = '';
 
+        // 翻訳品質警告の履歴もクリア
+        translationQualityWarningHistory.clear();
+
         // 再生ボタンを無効化
         updateTranslationBoxState(false);
 
@@ -1454,7 +1462,7 @@ document.addEventListener('DOMContentLoaded', function() {
         status.classList.add('idle');
 
         errorMessage.textContent = '';
-        
+
         console.log('コンテンツリセット完了');
     }
     
@@ -1751,6 +1759,123 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('録音停止');
     }
     
+    /**
+     * 翻訳結果の品質をチェックする
+     * 日本語から英語への翻訳で未翻訳の日本語が残っている場合に警告を表示
+     * 括弧内の日本語（例：「staff meeting (担当者会議)」）は正常な翻訳として扱う
+     * @param {string} originalText - 元のテキスト
+     * @param {string} translatedText - 翻訳されたテキスト
+     * @param {string} sourceLanguage - 元の言語（'ja' または 'en'）
+     * @param {HTMLElement} targetElement - 警告を表示する要素（translationBox）
+     * @returns {boolean} - 品質に問題がある場合true
+     */
+    function checkTranslationQuality(originalText, translatedText, sourceLanguage, targetElement) {
+        // 日本語から英語への翻訳の場合のみチェック
+        if (sourceLanguage !== 'ja') {
+            return false;
+        }
+
+        // 日本語文字（漢字、ひらがな、カタカナ）の正規表現
+        const japanesePattern = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
+
+        // 括弧内の日本語を一時的に除外してからチェック
+        // 半角括弧: "staff meeting (担当者会議)" → "staff meeting ()"
+        // 全角括弧: "staff meeting（担当者会議）" → "staff meeting（）"
+        let textWithoutParentheses = translatedText;
+        // 半角括弧内の日本語を除外
+        textWithoutParentheses = textWithoutParentheses.replace(/\([^)]*[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF][^)]*\)/g, '()');
+        // 全角括弧内の日本語を除外
+        textWithoutParentheses = textWithoutParentheses.replace(/\uFF08[^\uFF09]*[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF][^\uFF09]*\uFF09/g, '（）');
+
+        // 括弧外に日本語が含まれているかチェック
+        const hasUntranslatedJapanese = japanesePattern.test(textWithoutParentheses);
+
+        if (hasUntranslatedJapanese) {
+            // 同じテキストに対する警告回数をチェック
+            const warningCount = translationQualityWarningHistory.get(originalText) || 0;
+            if (warningCount >= MAX_QUALITY_WARNING_COUNT) {
+                console.log('翻訳品質警告: 最大警告回数に達したため警告をスキップ', {
+                    original: originalText,
+                    warningCount: warningCount
+                });
+                return false; // 警告を表示しない
+            }
+
+            console.warn('翻訳品質警告: 翻訳結果に日本語が残っています', {
+                original: originalText,
+                translated: translatedText,
+                afterFiltering: textWithoutParentheses,
+                warningCount: warningCount + 1
+            });
+
+            // 警告回数をインクリメント
+            translationQualityWarningHistory.set(originalText, warningCount + 1);
+
+            // Mapのサイズ上限チェック（メモリ最適化）
+            if (translationQualityWarningHistory.size > MAX_WARNING_HISTORY_SIZE) {
+                // 最も古いエントリを削除（Mapは挿入順を保持）
+                const firstKey = translationQualityWarningHistory.keys().next().value;
+                translationQualityWarningHistory.delete(firstKey);
+                console.log('警告履歴の最大サイズに達したため、古いエントリを削除しました');
+            }
+
+            showTranslationQualityWarning(originalText, targetElement);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 翻訳品質の警告を表示し、再翻訳オプションを提供
+     * @param {string} originalText - 元のテキスト
+     * @param {HTMLElement} targetElement - 警告を表示する要素（translationBox）
+     */
+    function showTranslationQualityWarning(originalText, targetElement) {
+        // 既存の警告があれば削除
+        const existingWarning = document.getElementById('translationQualityWarning');
+        if (existingWarning) {
+            existingWarning.remove();
+        }
+
+        // 警告要素を作成
+        const warning = document.createElement('div');
+        warning.id = 'translationQualityWarning';
+        warning.className = 'translation-quality-warning';
+        warning.innerHTML = `
+            <div class="warning-content">
+                <span class="warning-icon">⚠️</span>
+                <span class="warning-text">一部が翻訳されていない可能性があります</span>
+                <button class="retry-translation-btn" id="retryTranslationBtn">再翻訳</button>
+                <button class="close-warning-btn" id="closeWarningBtn">×</button>
+            </div>
+        `;
+
+        // 翻訳ボックスに追加
+        targetElement.appendChild(warning);
+
+        // 再翻訳ボタンのイベントリスナー
+        document.getElementById('retryTranslationBtn').addEventListener('click', (e) => {
+            e.stopPropagation(); // TTS再生イベントの伝播を防止
+            console.log('再翻訳を実行:', originalText);
+            warning.remove();
+            translateText(originalText);
+        });
+
+        // 閉じるボタンのイベントリスナー
+        document.getElementById('closeWarningBtn').addEventListener('click', (e) => {
+            e.stopPropagation(); // TTS再生イベントの伝播を防止
+            warning.remove();
+        });
+
+        // 10秒後に自動的に閉じる（再翻訳ボタンは押されない場合のみ）
+        setTimeout(() => {
+            if (document.getElementById('translationQualityWarning')) {
+                warning.remove();
+            }
+        }, 10000);
+    }
+
     // OpenAI API（gpt-4.1-nanoモデル）を使用してテキストを翻訳
     async function translateText(text) {
         // 翻訳処理の実行条件をチェック
@@ -1758,7 +1883,13 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('翻訳スキップ: 空のテキスト');
             return;
         }
-        
+
+        // 前回の翻訳品質警告を削除（新しい翻訳が始まる際に古い警告が残らないように）
+        const staleWarning = document.getElementById('translationQualityWarning');
+        if (staleWarning) {
+            staleWarning.remove();
+        }
+
         // 既に翻訳中の場合は新しいリクエストで上書き
         if (translationInProgress) {
             // 既存のリクエストを中断
@@ -1880,6 +2011,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 翻訳完了の視覚的フィードバック
                 updateTranslationCompleteState(true);
                 console.log('翻訳結果を保存しました。再生ボタンで読み上げ可能です。');
+
+                // 翻訳品質チェック
+                checkTranslationQuality(text, translationResult, selectedLanguage, translationBox);
             } else {
                 lastTranslationResult = '';
                 updateTranslationBoxState(false);
