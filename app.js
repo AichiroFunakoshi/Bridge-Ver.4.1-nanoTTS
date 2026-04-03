@@ -1971,7 +1971,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 console.error('OpenAI APIエラー:', errorData);
-                throw new Error(errorData.error?.message || `OpenAI APIがステータスを返しました: ${response.status}`);
+                const errorCode = errorData?.error?.code;
+                if (errorCode === 'insufficient_quota') {
+                    throw new Error('APIキーのクォータ（利用上限）を超えました。OpenAIのダッシュボードで残高・プランを確認し、APIキーを更新してください。');
+                }
+                throw new Error(errorData?.error?.message || `OpenAI APIがステータスを返しました: ${response.status}`);
             }
             
             console.log('翻訳ストリーム開始');
